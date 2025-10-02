@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Treino de Hipertrofia</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #0a0a0a; --secondary-color: #1a1a1a; --text-color: #e0e0e0;
+            --accent-color: #007bff; --success-color: #28a745; --danger-color: #dc3545;
+            --warning-color: #ffc107; --info-color: #17a2b8; --pr-color: #f9b115;
+            --input-bg: #333; --border-color: #444;
+        }
+        [data-theme="light"] {
+            --primary-color: #f4f4f9; --secondary-color: #ffffff; --text-color: #0a0a0a;
+            --input-bg: #e9ecef; --border-color: #dee2e6;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--primary-color ); color: var(--text-color); margin: 0; padding: 1rem;
+            line-height: 1.6; transition: background-color 0.3s, color 0.3s;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 1rem; }
+        .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--accent-color); }
+        h1 { text-align: left; color: var(--accent-color); border-bottom: none; margin: 0; padding-bottom: 0.5rem; font-size: 1.8rem; }
+        h2 { text-align: center; color: var(--accent-color); }
+        .theme-switcher { font-size: 1.5rem; cursor: pointer; background: none; border: none; color: var(--text-color); padding: 0.5rem; }
+        .main-controls, .workout-selector { display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .tab-button, .main-button {
+            padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: bold; cursor: pointer;
+            border: 2px solid var(--accent-color); background-color: transparent; color: var(--accent-color);
+            border-radius: 8px; transition: background-color 0.3s, color 0.3s;
+        }
+        .tab-button:hover, .tab-button.active { background-color: var(--accent-color); color: var(--primary-color); }
+        .main-button { border-color: var(--success-color); color: var(--success-color); }
+        .main-button:hover { background-color: var(--success-color); color: var(--primary-color); }
+        .workout-plan { display: none; } .workout-plan.active { display: block; }
+        .workout-meta { text-align: center; color: #888; margin-top: -1rem; margin-bottom: 2rem; font-style: italic; }
+        .exercise-card { background-color: var(--secondary-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: background-color 0.3s; }
+        .exercise-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+        .exercise-title { font-size: 1.5rem; font-weight: bold; margin: 0; }
+        .exercise-meta { font-size: 0.9rem; color: #aaa; }
+        .pr-badge { font-size: 0.8rem; color: var(--pr-color); font-weight: bold; margin-left: 10px; }
+        .sets-table { width: 100%; border-collapse: collapse; }
+        .sets-table th, .sets-table td { padding: 0.75rem; text-align: center; border-bottom: 1px solid var(--border-color); transition: opacity 0.3s; }
+        .sets-table th { font-size: 0.9rem; text-transform: uppercase; color: #bbb; }
+        .set-row.completed td { opacity: 0.5; text-decoration: line-through; }
+        .set-row.completed .input-field { text-decoration: line-through; }
+        .input-field { width: 70px; padding: 0.5rem; background-color: var(--input-bg); color: var(--text-color); border: 1px solid #555; border-radius: 5px; text-align: center; font-size: 1rem; }
+        .input-field::placeholder { color: #888; font-size: 0.9em; }
+        .set-checkbox { width: 22px; height: 22px; cursor: pointer; }
+        .timer-button { padding: 0.75rem 1rem; font-size: 1rem; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; background-color: var(--success-color); color: white; transition: background-color 0.3s; min-width: 180px; }
+        .timer-button.timing { background-color: var(--danger-color); cursor: not-allowed; }
+        .notes-section { margin-top: 2rem; }
+        .notes-section textarea { width: 100%; box-sizing: border-box; height: 80px; background-color: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem; font-family: inherit; font-size: 1rem; resize: vertical; }
+        .finish-button { display: block; width: 100%; padding: 1rem; font-size: 1.2rem; font-weight: bold; margin-top: 1rem; background-color: var(--accent-color); color: var(--primary-color); border: none; border-radius: 8px; cursor: pointer; }
+        .finish-button:hover { opacity: 0.9; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background-color: var(--secondary-color); margin: auto; padding: 2rem; border: 1px solid #888; width: 90%; max-width: 700px; border-radius: 10px; position: relative; }
+        .close-button { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; z-index: 1010; }
+        .chart-controls { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+        .chart-controls select { padding: 0.5rem; background-color: var(--input-bg); color: var(--text-color); border: 1px solid #555; border-radius: 5px; }
+        .manage-button { padding: 0.5rem 1rem; background-color: var(--warning-color); color: black; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #history-manager, #pr-manager { display: none; max-height: 400px; overflow-y: auto; }
+        .history-manager-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem; }
+        .data-io-button { padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .export-button { background-color: var(--success-color); color: white; }
+        .import-button { background-color: var(--info-color); color: white; }
+        .history-item, .pr-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border-color); }
+        .history-item-info, .pr-item-info { font-size: 0.9rem; }
+        .history-item-info strong, .pr-item-info strong { color: var(--accent-color); }
+        .pr-item-details { color: var(--pr-color); font-weight: bold; }
+        .history-item-notes { font-style: italic; color: #aaa; font-size: 0.85rem; margin-top: 5px; max-width: 80%; }
+        .delete-btn { background: transparent; border: none; color: var(--danger-color); font-size: 1.5rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-container">
+            <h1>Plano de Treino</h1>
+            <button class="theme-switcher" id="theme-switcher">🌙</button>
+        </div>
+        <div class="main-controls" style="margin-top: 2rem;"><button class="main-button" onclick="openChartModal()">Ver Evolução</button></div>
+        <div class="workout-selector">
+            <button class="tab-button active" onclick="showWorkout('UpperA')">Superiores A</button>
+            <button class="tab-button" onclick="showWorkout('LowerA')">Inferiores A</button>
+            <button class="tab-button" onclick="showWorkout('UpperB')">Superiores B</button>
+            <button class="tab-button" onclick="showWorkout('LowerB')">Inferiores B</button>
+        </div>
+        <div id="workout-UpperA" class="workout-plan active"></div>
+        <div id="workout-LowerA" class="workout-plan"></div>
+        <div id="workout-UpperB" class="workout-plan"></div>
+        <div id="workout-LowerB" class="workout-plan"></div>
+    </div>
+    <div id="chartModal" class="modal"></div>
+    <input type="file" id="import-file-input" accept=".json" style="display: none;">
+    <script>
+    const workouts = {
+        UpperA: [
+            { name: 'Supino Reto com Barra', sets: 4, reps: '6-8', rest: 150 }, { name: 'Crucifixo Inclinado com Halteres', sets: 3, reps: '10-12', rest: 90 },
+            { name: 'Desenvolvimento Militar', sets: 3, reps: '8-10', rest: 120 }, { name: 'Elevação Frontal com Halteres', sets: 3, reps: '10-12', rest: 90 },
+            { name: 'Remada Curvada', sets: 4, reps: '6-8', rest: 120 }, { name: 'Rosca Direta com Barra', sets: 3, reps: '8-10', rest: 90 },
+            { name: 'Tríceps Testa', sets: 3, reps: '8-10', rest: 90 },
+        ],
+        LowerA: [
+            { name: 'Agachamento Livre', sets: 4, reps: '6-8', rest: 180 }, { name: 'Leg Press 45º', sets: 3, reps: '8-10', rest: 120 },
+            { name: 'Levantamento Terra Romeno', sets: 4, reps: '8-10', rest: 120 }, { name: 'Cadeira Flexora', sets: 3, reps: '10-12', rest: 90 },
+            { name: 'Panturrilha em Pé', sets: 5, reps: '10-15', rest: 60 },
+        ],
+        UpperB: [
+            { name: 'Barra Fixa (ou Puxada Frontal)', sets: 4, reps: '6-8', rest: 120 }, { name: 'Remada Cavalinho', sets: 3, reps: '8-10', rest: 120 },
+            { name: 'Supino Inclinado com Halteres', sets: 4, reps: '8-10', rest: 120 }, { name: 'Cross Over Polia Alta', sets: 3, reps: '10-12', rest: 90 },
+            { name: 'Elevação Lateral com Halteres', sets: 4, reps: '10-15', rest: 90 }, { name: 'Crucifixo Invertido (Bent-Over)', sets: 3, reps: '12-15', rest: 90 },
+            { name: 'Tríceps Corda', sets: 3, reps: '10-12', rest: 90 }, { name: 'Tríceps Francês com Halter', sets: 3, reps: '10-12', rest: 90 },
+            { name: 'Rosca Martelo', sets: 3, reps: '8-10', rest: 90 }, { name: 'Rosca Inclinada com Halteres', sets: 3, reps: '10-12', rest: 90 },
+        ],
+        LowerB: [
+            { name: 'Levantamento Terra Convencional', sets: 4, reps: '5-6', rest: 180 }, { name: 'Elevação Pélvica com Barra', sets: 4, reps: '8-10', rest: 120 },
+            { name: 'Afundo com Halteres', sets: 4, reps: '8-10', rest: 120 }, { name: 'Cadeira Extensora', sets: 3, reps: '10-12', rest: 90 },
+            { name: 'Panturrilha Sentado', sets: 5, reps: '15-20', rest: 60 },
+        ]
+    };
+
+    function calculateWorkoutTime(workout) {
+        const timePerSet = 45, timeBetweenExercises = 90; let totalTime = 0;
+        workout.forEach(ex => { totalTime += ex.sets * timePerSet + (ex.sets - 1) * ex.rest + timeBetweenExercises; });
+        return Math.round(totalTime / 60);
+    }
+
+    function getPersonalRecord(exerciseName) {
+        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        let maxWeight = 0;
+        history.forEach(w => w.exercises.forEach(ex => {
+            if (ex.name === exerciseName) { const currentMax = Math.max(0, ...ex.sets.map(s => s.weight)); if (currentMax > maxWeight) maxWeight = currentMax; }
+        }));
+        return maxWeight;
+    }
+
+    function getSuggestedWeight(exerciseName) {
+        const lastWeight = getPersonalRecord(exerciseName);
+        if (!lastWeight) return 'kg';
+        const suggestedIncrease = Math.max(lastWeight * 0.05, 2.5);
+        let suggestedWeight = lastWeight + suggestedIncrease;
+        suggestedWeight = Math.round(suggestedWeight * 2) / 2;
+        return `Sug: ${suggestedWeight}kg`;
+    }
+
+    function createExerciseHTML(exercise) {
+        const pr = getPersonalRecord(exercise.name);
+        const prBadge = pr > 0 ? `<span class="pr-badge">🏆 PR: ${pr}kg</span>` : '';
+        const placeholder = getSuggestedWeight(exercise.name);
+        let tableRows = '';
+        for (let i = 1; i <= exercise.sets; i++) {
+            tableRows += `<tr class="set-row"><td>${i}</td><td><input type="number" class="input-field weight-input" placeholder="${placeholder}"></td><td><input type="checkbox" class="set-checkbox" onchange="toggleSetCompleted(this)"></td></tr>`;
+        }
+        return `<div class="exercise-card" data-exercise-name="${exercise.name}" data-rep-goal="${exercise.reps.split('-')[1] || exercise.reps}"><div class="exercise-header"><div><h3 class="exercise-title">${exercise.name}${prBadge}</h3><p class="exercise-meta">${exercise.sets} séries x ${exercise.reps} reps</p></div><button class="timer-button" onclick="startTimer(this, ${exercise.rest})">Iniciar Descanso (${exercise.rest}s)</button></div><table class="sets-table"><thead><tr><th>Série</th><th>Peso (kg)</th><th>Feito ✔</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+    }
+    
+    function toggleSetCompleted(checkbox) { checkbox.closest('.set-row').classList.toggle('completed', checkbox.checked); }
+
+    function renderWorkouts() {
+        for (const workoutId in workouts) {
+            const container = document.getElementById(`workout-${workoutId}`);
+            if (!container) continue;
+            const time = calculateWorkoutTime(workouts[workoutId]);
+            let html = `<h2>${document.querySelector(`.tab-button[onclick="showWorkout('${workoutId}')"]`).textContent}</h2><p class="workout-meta">⏱️ Tempo Estimado: ~${time} minutos</p>`;
+            workouts[workoutId].forEach(ex => { html += createExerciseHTML(ex); });
+            html += `<div class="notes-section"><label for="notes-${workoutId}"><h3>Notas do Treino</h3></label><textarea id="notes-${workoutId}" placeholder="Como se sentiu hoje? Alguma dor? O treino rendeu?"></textarea></div>`;
+            html += `<button class="finish-button" onclick="saveWorkout('${workoutId}')">Finalizar e Salvar Treino</button>`;
+            container.innerHTML = html;
+        }
+        document.getElementById('chartModal').innerHTML = `<div class="modal-content"><span class="close-button" onclick="closeChartModal()">&times;</span><h2>Evolução</h2><div class="chart-controls"><select id="exerciseSelector"></select><select id="periodSelector"><option value="30">1 Mês</option><option value="90">3 Meses</option><option value="180">6 Meses</option><option value="365">1 Ano</option></select><select id="chartTypeSelector"><option value="bar">Barras</option><option value="line">Linhas</option></select><button class="manage-button" onclick="toggleManager('pr-manager')">Recordes</button><button class="manage-button" onclick="toggleManager('history-manager')">Histórico</button></div><canvas id="evolutionChart"></canvas><div id="history-manager"></div><div id="pr-manager"></div></div>`;
+    }
+
+    function showWorkout(id) {
+        document.querySelectorAll('.workout-plan').forEach(p => p.classList.remove('active'));
+        document.getElementById(`workout-${id}`).classList.add('active');
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.tab-button[onclick="showWorkout('${id}')"]`).classList.add('active');
+    }
+
+    let timerInterval;
+    const notificationSound = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU'+Array(1e3).join('12121212'));
+
+    function startTimer(button, duration) {
+        if (button.classList.contains('timing')) return;
+        button.classList.add('timing'); let timeLeft = duration;
+        timerInterval = setInterval(() => {
+            timeLeft--; const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+            button.textContent = `Descansando... ${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval); button.classList.remove('timing');
+                button.textContent = `Iniciar Descanso (${duration}s)`;
+                notificationSound.play(); if (navigator.vibrate) navigator.vibrate(200);
+            }
+        }, 1000);
+    }
+
+    function saveWorkout(workoutId) {
+        const notes = document.getElementById(`notes-${workoutId}`).value;
+        const workoutData = { date: new Date().toISOString(), exercises: [], notes: notes };
+        const container = document.getElementById(`workout-${workoutId}`);
+        let newPrs = [];
+        container.querySelectorAll('.exercise-card').forEach(card => {
+            const name = card.dataset.exerciseName;
+            const goal = parseInt(card.dataset.repGoal) || 8;
+            const sets = []; let maxWeightInWorkout = 0;
+            card.querySelectorAll('.set-row').forEach(row => {
+                const isChecked = row.querySelector('.set-checkbox').checked;
+                const weight = row.querySelector('.weight-input').value;
+                if (isChecked && weight) {
+                    const w = parseFloat(weight); sets.push({ weight: w, reps: goal });
+                    if (w > maxWeightInWorkout) maxWeightInWorkout = w;
+                }
+            });
+            if (sets.length > 0) {
+                workoutData.exercises.push({ name: name, sets: sets });
+                const oldPr = getPersonalRecord(name);
+                if (maxWeightInWorkout > oldPr) newPrs.push({ name, weight: maxWeightInWorkout });
+            }
+        });
+        if (workoutData.exercises.length === 0) { alert("Nenhum dado para salvar."); return; }
+        let history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        history.push(workoutData);
+        localStorage.setItem('workoutHistory', JSON.stringify(history));
+        let alertMessage = `Treino salvo com sucesso!`;
+        if (newPrs.length > 0) {
+            alertMessage += "\n\n" + newPrs.map(pr => `🏆 Novo Recorde Pessoal! ${pr.name}: ${pr.weight}kg. Parabéns!`).join("\n");
+        }
+        alert(alertMessage);
+        renderWorkouts(); showWorkout(workoutId);
+    }
+
+    const chartModal = document.getElementById('chartModal');
+    let evolutionChart;
+
+    function openChartModal() {
+        chartModal.classList.add('show');
+        document.getElementById('exerciseSelector').onchange = updateChart;
+        document.getElementById('periodSelector').onchange = updateChart;
+        document.getElementById('chartTypeSelector').onchange = updateChart;
+        populateSelectors(); updateChart();
+    }
+    function closeChartModal() {
+        chartModal.classList.remove('show');
+        document.getElementById('history-manager').style.display = 'none';
+        document.getElementById('pr-manager').style.display = 'none';
+        document.getElementById('evolutionChart').style.display = 'block';
+    }
+
+    function populateSelectors() {
+        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const exSet = new Set(history.flatMap(w => w.exercises.map(e => e.name)));
+        const selector = document.getElementById('exerciseSelector');
+        selector.innerHTML = exSet.size === 0 ? "<option>Nenhum treino salvo</option>" : "";
+        exSet.forEach(name => selector.innerHTML += `<option value="${name}">${name}</option>`);
+    }
+
+    function updateChart() {
+        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const selEx = document.getElementById('exerciseSelector').value;
+        const selPeriod = parseInt(document.getElementById('periodSelector').value);
+        const chartType = document.getElementById('chartTypeSelector').value;
+        if (!selEx || history.length === 0) { if (evolutionChart) evolutionChart.destroy(); return; }
+        const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - selPeriod);
+        const filtered = history.filter(w => w && w.date && new Date(w.date) >= cutoff).map(w => {
+            const ex = w.exercises.find(e => e.name === selEx); if (!ex) return null;
+            const vol = ex.sets.reduce((sum, set) => sum + (set.weight * set.reps), 0);
+            const maxW = Math.max(0, ...ex.sets.map(set => set.weight));
+            return { date: new Date(w.date).toLocaleDateString('pt-BR'), vol, maxW };
+        }).filter(Boolean);
+        const labels = [...new Set(filtered.map(d => d.date))];
+        const volData = [], weightData = [];
+        labels.forEach(label => {
+            const dayData = filtered.filter(d => d.date === label);
+            if (dayData.length > 0) {
+                volData.push(dayData.reduce((sum, item) => sum + item.vol, 0));
+                weightData.push(Math.max(...dayData.map(item => item.maxW)));
+            }
+        });
+        const ctx = document.getElementById('evolutionChart').getContext('2d');
+        if (evolutionChart) evolutionChart.destroy();
+        evolutionChart = new Chart(ctx, {
+            type: chartType, data: { labels, datasets: [
+                { label: `Volume Total (Kg)`, data: volData, borderColor: 'rgba(0, 123, 255, 1)', backgroundColor: 'rgba(0, 123, 255, 0.5)', yAxisID: 'yVolume' },
+                { label: `Carga Máxima (Kg)`, data: weightData, borderColor: 'rgba(40, 167, 69, 1)', backgroundColor: 'rgba(40, 167, 69, 0.5)', yAxisID: 'yWeight' }
+            ]},
+            options: { responsive: true, interaction: { mode: 'index', intersect: false }, scales: {
+                x: { ticks: { color: 'var(--text-color)' } },
+                yVolume: { type: 'linear', display: true, position: 'left', ticks: { color: 'rgba(0, 123, 255, 1)' }, beginAtZero: true, title: { display: true, text: 'Volume Total', color: 'rgba(0, 123, 255, 1)'} },
+                yWeight: { type: 'linear', display: true, position: 'right', ticks: { color: 'rgba(40, 167, 69, 1)' }, beginAtZero: true, title: { display: true, text: 'Carga Máxima', color: 'rgba(40, 167, 69, 1)'}, grid: { drawOnChartArea: false } }
+            }, plugins: { legend: { labels: { color: 'var(--text-color)' } } } }
+        });
+    }
+
+    function toggleManager(managerId) {
+        const managers = ['history-manager', 'pr-manager'];
+        const chart = document.getElementById('evolutionChart');
+        const targetManager = document.getElementById(managerId);
+        
+        if (targetManager.style.display === 'block') {
+            targetManager.style.display = 'none';
+            chart.style.display = 'block';
+            updateChart();
+        } else {
+            chart.style.display = 'none';
+            managers.forEach(id => { document.getElementById(id).style.display = id === managerId ? 'block' : 'none'; });
+            if (managerId === 'history-manager') renderHistoryList();
+            if (managerId === 'pr-manager') renderPrList();
+        }
+    }
+
+    function renderHistoryList() {
+        const manager = document.getElementById('history-manager');
+        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        manager.innerHTML = `<div class="history-manager-header"><h3>Histórico de Treinos</h3><div><button class="data-io-button export-button" onclick="exportData()">Exportar</button><button class="data-io-button import-button" onclick="importData()">Importar</button></div></div>`;
+        if (history.length === 0) { manager.innerHTML += '<p>Nenhum treino salvo.</p>'; return; }
+        history.slice().reverse().forEach((w, index) => {
+            const originalIndex = history.length - 1 - index;
+            const date = new Date(w.date).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+            const summary = w.exercises.map(ex => ex.name).slice(0, 2).join(', ') + '...';
+            const notesHTML = w.notes ? `<p class="history-item-notes">Nota: ${w.notes}</p>` : '';
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.innerHTML = `<div class="history-item-info"><strong>${date}</strong>  
+<span>${summary}</span>${notesHTML}</div><button class="delete-btn" onclick="deleteWorkout(${originalIndex})">🗑️</button>`;
+            manager.appendChild(item);
+        });
+    }
+
+    function renderPrList() {
+        const manager = document.getElementById('pr-manager');
+        manager.innerHTML = `<h3>🏆 Recordes Pessoais (PRs)</h3>`;
+        const allExercises = new Set(Object.values(workouts).flat().map(ex => ex.name));
+        let prsFound = 0;
+        const prList = document.createElement('div');
+        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+
+        allExercises.forEach(exName => {
+            const pr = getPersonalRecord(exName);
+            if (pr > 0) {
+                prsFound++;
+                const prWorkout = history.slice().reverse().find(w => w.exercises.some(ex => ex.name === exName && ex.sets.some(s => s.weight === pr)));
+                const prDate = prWorkout ? new Date(prWorkout.date).toLocaleDateString('pt-BR') : 'N/A';
+                const item = document.createElement('div');
+                item.className = 'pr-item';
+                item.innerHTML = `<div class="pr-item-info"><strong>${exName}</strong></div><div class="pr-item-details">${pr} kg <small>(${prDate})</small></div>`;
+                prList.appendChild(item);
+            }
+        });
+        if (prsFound === 0) {
+            manager.innerHTML += '<p>Nenhum recorde registrado ainda. Continue treinando!</p>';
+        } else {
+            manager.appendChild(prList);
+        }
+    }
+
+    function deleteWorkout(index) {
+        let history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const workoutDate = new Date(history[index].date).toLocaleDateString('pt-BR');
+        if (confirm(`Você tem certeza que deseja deletar o treino do dia ${workoutDate}?`)) {
+            history.splice(index, 1);
+            localStorage.setItem('workoutHistory', JSON.stringify(history));
+            renderHistoryList(); populateSelectors(); renderWorkouts();
+        }
+    }
+
+    function exportData() {
+        const history = localStorage
+</body>
+</html>
