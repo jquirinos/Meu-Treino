@@ -96,7 +96,7 @@
     </div>
     <div id="chartModal" class="modal"></div>
     <input type="file" id="import-file-input" accept=".json" style="display: none;">
-    <script>
+<script>
     const workouts = {
         UpperA: [
             { name: 'Supino Reto com Barra', sets: 4, reps: '6-8', rest: 150 }, { name: 'Crucifixo Inclinado com Halteres', sets: 3, reps: '10-12', rest: 90 },
@@ -330,7 +330,7 @@
         });
     }
 
-    function renderPrList() {
+        function renderPrList() {
         const manager = document.getElementById('pr-manager');
         manager.innerHTML = `<h3>🏆 Recordes Pessoais (PRs)</h3>`;
         const allExercises = new Set(Object.values(workouts).flat().map(ex => ex.name));
@@ -363,11 +363,97 @@
         if (confirm(`Você tem certeza que deseja deletar o treino do dia ${workoutDate}?`)) {
             history.splice(index, 1);
             localStorage.setItem('workoutHistory', JSON.stringify(history));
-            renderHistoryList(); populateSelectors(); renderWorkouts();
+            // Re-renderiza tudo para garantir consistência
+            renderWorkouts();
+            populateSelectors();
+            renderHistoryList();
         }
     }
 
     function exportData() {
-        const history = localStorage
+        const history = localStorage.getItem('workoutHistory');
+        if (!history || history === '[]') {
+            alert('Não há dados para exportar.');
+            return;
+        }
+        const blob = new Blob([history], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'meu_historico_de_treinos.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('Histórico exportado com sucesso!');
+    }
+
+    function importData() {
+        document.getElementById('import-file-input').click();
+    }
+
+    document.getElementById('import-file-input').addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedHistory = JSON.parse(e.target.result);
+                if (!Array.isArray(importedHistory)) throw new Error("Formato inválido.");
+
+                const choice = confirm("Como você deseja importar os dados?\n\nOK para MESCLAR com os dados existentes.\nCancelar para SUBSTITUIR os dados existentes.");
+
+                if (choice) { // Mesclar
+                    const currentHistory = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+                    const combinedHistory = [...currentHistory, ...importedHistory];
+                    const uniqueHistory = Array.from(new Map(combinedHistory.map(item => [item.date, item])).values());
+                    localStorage.setItem('workoutHistory', JSON.stringify(uniqueHistory));
+                    alert(`${importedHistory.length} registros mesclados com sucesso!`);
+                } else { // Substituir
+                    if (confirm("ATENÇÃO: Isso apagará todos os seus dados atuais. Deseja continuar?")) {
+                        localStorage.setItem('workoutHistory', JSON.stringify(importedHistory));
+                        alert(`${importedHistory.length} registros importados com sucesso (substituindo os atuais)!`);
+                    }
+                }
+                location.reload(); // Recarrega a página para aplicar todas as mudanças
+            } catch (error) {
+                alert('Erro ao importar o arquivo. Verifique se o arquivo é um JSON válido exportado por este aplicativo.');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    });
+
+    // Lógica do Seletor de Tema
+    const themeSwitcher = document.getElementById('theme-switcher');
+    const doc = document.documentElement;
+    
+    function applyTheme(theme) {
+        doc.setAttribute('data-theme', theme);
+        themeSwitcher.textContent = theme === 'dark' ? '☀️' : '🌙';
+        localStorage.setItem('theme', theme);
+    }
+
+    themeSwitcher.addEventListener('click', () => {
+        const currentTheme = doc.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        applyTheme(newTheme);
+    });
+
+    // Eventos de Carregamento
+    window.onclick = function(event) {
+        if (event.target == chartModal) closeChartModal();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        applyTheme(savedTheme);
+        renderWorkouts();
+        const activeTab = document.querySelector('.tab-button.active').getAttribute('onclick').match(/'([^']+)'/)[1];
+        showWorkout(activeTab);
+    });
+</script>
+
 </body>
 </html>
