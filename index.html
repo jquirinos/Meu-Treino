@@ -11,10 +11,13 @@
             --accent-color: #007bff; --success-color: #28a745; --danger-color: #dc3545;
             --warning-color: #ffc107; --info-color: #17a2b8; --pr-color: #f9b115;
             --input-bg: #333; --border-color: #444;
+            --calendar-day-bg: #2c2c2e; --calendar-day-hover: #3a3a3c;
+            --calendar-upper-color: #007bff; --calendar-lower-color: #28a745;
         }
         [data-theme="light"] {
             --primary-color: #f4f4f9; --secondary-color: #ffffff; --text-color: #0a0a0a;
             --input-bg: #e9ecef; --border-color: #dee2e6;
+            --calendar-day-bg: #e9ecef; --calendar-day-hover: #d1d5db;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -24,10 +27,10 @@
         .container { max-width: 800px; margin: 0 auto; padding: 1rem; }
         .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--accent-color); }
         h1 { text-align: left; color: var(--accent-color); border-bottom: none; margin: 0; padding-bottom: 0.5rem; font-size: 1.8rem; }
-        h2 { text-align: center; color: var(--accent-color); }
+        h2, h3 { text-align: center; color: var(--accent-color); }
         .theme-switcher { font-size: 1.5rem; cursor: pointer; background: none; border: none; color: var(--text-color); padding: 0.5rem; }
         .main-controls, .workout-selector { display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
-        .tab-button, .main-button {
+        .tab-button, .main-button, .secondary-button {
             padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: bold; cursor: pointer;
             border: 2px solid var(--accent-color); background-color: transparent; color: var(--accent-color);
             border-radius: 8px; transition: background-color 0.3s, color 0.3s;
@@ -35,8 +38,11 @@
         .tab-button:hover, .tab-button.active { background-color: var(--accent-color); color: var(--primary-color); }
         .main-button { border-color: var(--success-color); color: var(--success-color); }
         .main-button:hover { background-color: var(--success-color); color: var(--primary-color); }
+        .secondary-button { font-size: 0.8rem; padding: 0.5rem 1rem; border-color: #6c757d; color: #6c757d; }
+        .secondary-button:hover { background-color: #6c757d; color: white; }
+        .workout-header { text-align: center; }
         .workout-plan { display: none; } .workout-plan.active { display: block; }
-        .workout-meta { text-align: center; color: #888; margin-top: -1rem; margin-bottom: 2rem; font-style: italic; }
+        .workout-meta { color: #888; margin-top: -1rem; margin-bottom: 1rem; font-style: italic; }
         .exercise-card { background-color: var(--secondary-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: background-color 0.3s; }
         .exercise-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
         .exercise-title { font-size: 1.5rem; font-weight: bold; margin: 0; }
@@ -58,8 +64,12 @@
         .finish-button:hover { opacity: 0.9; }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); align-items: center; justify-content: center; }
         .modal.show { display: flex; }
-        .modal-content { background-color: var(--secondary-color); margin: auto; padding: 2rem; border: 1px solid #888; width: 90%; max-width: 700px; border-radius: 10px; position: relative; }
+        .modal-content { background-color: var(--secondary-color); margin: auto; padding: 2rem; border: 1px solid #888; width: 95%; max-width: 800px; border-radius: 10px; position: relative; }
         .close-button { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; z-index: 1010; }
+        .modal-tabs { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem; }
+        .modal-tab-button { background: none; border: none; color: var(--text-color); padding: 1rem; font-size: 1rem; cursor: pointer; border-bottom: 3px solid transparent; }
+        .modal-tab-button.active { border-bottom-color: var(--accent-color); font-weight: bold; }
+        .modal-view { display: none; } .modal-view.active { display: block; }
         .chart-controls { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
         .chart-controls select { padding: 0.5rem; background-color: var(--input-bg); color: var(--text-color); border: 1px solid #555; border-radius: 5px; }
         .manage-button { padding: 0.5rem 1rem; background-color: var(--warning-color); color: black; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
@@ -74,6 +84,15 @@
         .pr-item-details { color: var(--pr-color); font-weight: bold; }
         .history-item-notes { font-style: italic; color: #aaa; font-size: 0.85rem; margin-top: 5px; max-width: 80%; }
         .delete-btn { background: transparent; border: none; color: var(--danger-color); font-size: 1.5rem; cursor: pointer; }
+        #consistency-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .calendar-header { text-align: center; font-weight: bold; font-size: 0.8rem; }
+        .calendar-day { background-color: var(--calendar-day-bg); height: 40px; border-radius: 5px; transition: background-color 0.2s; position: relative; }
+        .calendar-day.has-data:hover { background-color: var(--calendar-day-hover); }
+        .calendar-day span { position: absolute; top: 5px; left: 5px; font-size: 0.7rem; }
+        .workout-dots { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; }
+        .dot { width: 6px; height: 6px; border-radius: 50%; }
+        .dot.upper { background-color: var(--calendar-upper-color); }
+        .dot.lower { background-color: var(--calendar-lower-color); }
     </style>
 </head>
 <body>
@@ -165,13 +184,31 @@
             const container = document.getElementById(`workout-${workoutId}`);
             if (!container) continue;
             const time = calculateWorkoutTime(workouts[workoutId]);
-            let html = `<h2>${document.querySelector(`.tab-button[onclick="showWorkout('${workoutId}')"]`).textContent}</h2><p class="workout-meta">⏱️ Tempo Estimado: ~${time} minutos</p>`;
+            let html = `<div class="workout-header"><h2>${document.querySelector(`.tab-button[onclick="showWorkout('${workoutId}')"]`).textContent}</h2><p class="workout-meta">⏱️ Tempo Estimado: ~${time} minutos</p><button class="secondary-button" onclick="fillFromLastWorkout('${workoutId}')">Preencher com Último Treino</button></div>`;
             workouts[workoutId].forEach(ex => { html += createExerciseHTML(ex); });
             html += `<div class="notes-section"><label for="notes-${workoutId}"><h3>Notas do Treino</h3></label><textarea id="notes-${workoutId}" placeholder="Como se sentiu hoje? Alguma dor? O treino rendeu?"></textarea></div>`;
             html += `<button class="finish-button" onclick="saveWorkout('${workoutId}')">Finalizar e Salvar Treino</button>`;
             container.innerHTML = html;
         }
-        document.getElementById('chartModal').innerHTML = `<div class="modal-content"><span class="close-button" onclick="closeChartModal()">&times;</span><h2>Evolução</h2><div class="chart-controls"><select id="exerciseSelector"></select><select id="periodSelector"><option value="30">1 Mês</option><option value="90">3 Meses</option><option value="180">6 Meses</option><option value="365">1 Ano</option></select><select id="chartTypeSelector"><option value="bar">Barras</option><option value="line">Linhas</option></select><button class="manage-button" onclick="toggleManager('pr-manager')">Recordes</button><button class="manage-button" onclick="toggleManager('history-manager')">Histórico</button></div><canvas id="evolutionChart"></canvas><div id="history-manager"></div><div id="pr-manager"></div></div>`;
+        document.getElementById('chartModal').innerHTML = `<div class="modal-content"><span class="close-button" onclick="closeChartModal()">&times;</span><div class="modal-tabs"><button class="modal-tab-button active" onclick="showModalView('evolution')">Evolução</button><button class="modal-tab-button" onclick="showModalView('consistency')">Consistência</button><button class="modal-tab-button" onclick="showModalView('records')">Recordes</button><button class="modal-tab-button" onclick="showModalView('history')">Histórico</button></div><div id="evolution-view" class="modal-view active"><div class="chart-controls"><select id="exerciseSelector"></select><select id="periodSelector"><option value="30">1 Mês</option><option value="90">3 Meses</option><option value="180">6 Meses</option><option value="365">1 Ano</option></select><select id="chartTypeSelector"><option value="bar">Barras</option><option value="line">Linhas</option></select></div><canvas id="evolutionChart"></canvas></div><div id="consistency-view" class="modal-view"><h3 style="text-align:center;">Frequência de Treinos</h3><div id="consistency-calendar"></div></div><div id="records-view" class="modal-view"><div id="pr-manager"></div></div><div id="history-view" class="modal-view"><div id="history-manager"></div></div></div>`;
+    }
+
+    function fillFromLastWorkout(workoutId) {
+        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const lastWorkout = history.slice().reverse().find(w => w.workoutId === workoutId);
+        if (!lastWorkout) {
+            alert(`Nenhum treino anterior do tipo "${document.querySelector(`.tab-button[onclick="showWorkout('${workoutId}')"]`).textContent}" foi encontrado.`);
+            return;
+        }
+        const workoutContainer = document.getElementById(`workout-${workoutId}`);
+        lastWorkout.exercises.forEach(ex => {
+            const card = workoutContainer.querySelector(`.exercise-card[data-exercise-name="${ex.name}"]`);
+            if (card) {
+                const maxWeight = Math.max(0, ...ex.sets.map(s => s.weight));
+                card.querySelectorAll('.weight-input').forEach(input => input.value = maxWeight);
+            }
+        });
+        alert('Pesos preenchidos com base no último treino.');
     }
 
     function showWorkout(id) {
@@ -200,7 +237,7 @@
 
     function saveWorkout(workoutId) {
         const notes = document.getElementById(`notes-${workoutId}`).value;
-        const workoutData = { date: new Date().toISOString(), exercises: [], notes: notes };
+        const workoutData = { date: new Date().toISOString(), workoutId: workoutId, exercises: [], notes: notes };
         const container = document.getElementById(`workout-${workoutId}`);
         let newPrs = [];
         container.querySelectorAll('.exercise-card').forEach(card => {
@@ -238,16 +275,24 @@
 
     function openChartModal() {
         chartModal.classList.add('show');
+        showModalView('evolution');
         document.getElementById('exerciseSelector').onchange = updateChart;
         document.getElementById('periodSelector').onchange = updateChart;
         document.getElementById('chartTypeSelector').onchange = updateChart;
         populateSelectors(); updateChart();
     }
-    function closeChartModal() {
-        chartModal.classList.remove('show');
-        document.getElementById('history-manager').style.display = 'none';
-        document.getElementById('pr-manager').style.display = 'none';
-        document.getElementById('evolutionChart').style.display = 'block';
+    function closeChartModal() { chartModal.classList.remove('show'); }
+
+    function showModalView(viewId) {
+        document.querySelectorAll('.modal-view').forEach(v => v.classList.remove('active'));
+        document.getElementById(`${viewId}-view`).classList.add('active');
+        document.querySelectorAll('.modal-tab-button').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.modal-tab-button[onclick="showModalView('${viewId}')"]`).classList.add('active');
+
+        if (viewId === 'evolution') updateChart();
+        if (viewId === 'consistency') renderConsistencyCalendar();
+        if (viewId === 'records') renderPrList();
+        if (viewId === 'history') renderHistoryList();
     }
 
     function populateSelectors() {
@@ -295,20 +340,59 @@
         });
     }
 
-    function toggleManager(managerId) {
-        const managers = ['history-manager', 'pr-manager'];
-        const chart = document.getElementById('evolutionChart');
-        const targetManager = document.getElementById(managerId);
-        
-        if (targetManager.style.display === 'block') {
-            targetManager.style.display = 'none';
-            chart.style.display = 'block';
-            updateChart();
-        } else {
-            chart.style.display = 'none';
-            managers.forEach(id => { document.getElementById(id).style.display = id === managerId ? 'block' : 'none'; });
-            if (managerId === 'history-manager') renderHistoryList();
-            if (managerId === 'pr-manager') renderPrList();
+    function renderConsistencyCalendar() {
+        const calendarEl = document.getElementById('consistency-calendar');
+        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        calendarEl.innerHTML = ''; // Limpa o calendário
+
+        const today = new Date();
+        const month = today.getMonth();
+        const year = today.getFullYear();
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // Adiciona cabeçalho dos dias da semana
+        ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].forEach(day => {
+            const headerEl = document.createElement('div');
+            headerEl.className = 'calendar-header';
+            headerEl.textContent = day;
+            calendarEl.appendChild(headerEl);
+        });
+
+        // Adiciona dias em branco para o início do mês
+        for (let i = 0; i < firstDay; i++) {
+            calendarEl.appendChild(document.createElement('div'));
+        }
+
+        // Adiciona os dias do mês
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dayEl = document.createElement('div');
+            dayEl.className = 'calendar-day';
+            dayEl.innerHTML = `<span>${i}</span><div class="workout-dots"></div>`;
+            
+            const dayWorkouts = history.filter(w => {
+                const workoutDate = new Date(w.date);
+                return workoutDate.getDate() === i && workoutDate.getMonth() === month && workoutDate.getFullYear() === year;
+            });
+
+            if (dayWorkouts.length > 0) {
+                dayEl.classList.add('has-data');
+                const dotsContainer = dayEl.querySelector('.workout-dots');
+                const workoutTypes = new Set(dayWorkouts.map(w => w.workoutId.includes('Upper') ? 'upper' : 'lower'));
+                
+                if (workoutTypes.has('upper')) {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot upper';
+                    dotsContainer.appendChild(dot);
+                }
+                if (workoutTypes.has('lower')) {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot lower';
+                    dotsContainer.appendChild(dot);
+                }
+            }
+            calendarEl.appendChild(dayEl);
         }
     }
 
@@ -320,17 +404,16 @@
         history.slice().reverse().forEach((w, index) => {
             const originalIndex = history.length - 1 - index;
             const date = new Date(w.date).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
-            const summary = w.exercises.map(ex => ex.name).slice(0, 2).join(', ') + '...';
+            const workoutName = document.querySelector(`.tab-button[onclick="showWorkout('${w.workoutId}')"]`).textContent;
             const notesHTML = w.notes ? `<p class="history-item-notes">Nota: ${w.notes}</p>` : '';
             const item = document.createElement('div');
             item.className = 'history-item';
-            item.innerHTML = `<div class="history-item-info"><strong>${date}</strong>  
-<span>${summary}</span>${notesHTML}</div><button class="delete-btn" onclick="deleteWorkout(${originalIndex})">🗑️</button>`;
+            item.innerHTML = `<div class="history-item-info"><strong>${date}</strong> - <span>${workoutName}</span>${notesHTML}</div><button class="delete-btn" onclick="deleteWorkout(${originalIndex})">🗑️</button>`;
             manager.appendChild(item);
         });
     }
 
-        function renderPrList() {
+    function renderPrList() {
         const manager = document.getElementById('pr-manager');
         manager.innerHTML = `<h3>🏆 Recordes Pessoais (PRs)</h3>`;
         const allExercises = new Set(Object.values(workouts).flat().map(ex => ex.name));
@@ -363,19 +446,15 @@
         if (confirm(`Você tem certeza que deseja deletar o treino do dia ${workoutDate}?`)) {
             history.splice(index, 1);
             localStorage.setItem('workoutHistory', JSON.stringify(history));
-            // Re-renderiza tudo para garantir consistência
             renderWorkouts();
             populateSelectors();
-            renderHistoryList();
+            showModalView('history');
         }
     }
 
     function exportData() {
         const history = localStorage.getItem('workoutHistory');
-        if (!history || history === '[]') {
-            alert('Não há dados para exportar.');
-            return;
-        }
+        if (!history || history === '[]') { alert('Não há dados para exportar.'); return; }
         const blob = new Blob([history], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -388,35 +467,30 @@
         alert('Histórico exportado com sucesso!');
     }
 
-    function importData() {
-        document.getElementById('import-file-input').click();
-    }
+    function importData() { document.getElementById('import-file-input').click(); }
 
     document.getElementById('import-file-input').addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const importedHistory = JSON.parse(e.target.result);
                 if (!Array.isArray(importedHistory)) throw new Error("Formato inválido.");
-
                 const choice = confirm("Como você deseja importar os dados?\n\nOK para MESCLAR com os dados existentes.\nCancelar para SUBSTITUIR os dados existentes.");
-
-                if (choice) { // Mesclar
+                if (choice) {
                     const currentHistory = JSON.parse(localStorage.getItem('workoutHistory')) || [];
                     const combinedHistory = [...currentHistory, ...importedHistory];
                     const uniqueHistory = Array.from(new Map(combinedHistory.map(item => [item.date, item])).values());
                     localStorage.setItem('workoutHistory', JSON.stringify(uniqueHistory));
                     alert(`${importedHistory.length} registros mesclados com sucesso!`);
-                } else { // Substituir
+                } else {
                     if (confirm("ATENÇÃO: Isso apagará todos os seus dados atuais. Deseja continuar?")) {
                         localStorage.setItem('workoutHistory', JSON.stringify(importedHistory));
                         alert(`${importedHistory.length} registros importados com sucesso (substituindo os atuais)!`);
                     }
                 }
-                location.reload(); // Recarrega a página para aplicar todas as mudanças
+                location.reload();
             } catch (error) {
                 alert('Erro ao importar o arquivo. Verifique se o arquivo é um JSON válido exportado por este aplicativo.');
             }
@@ -425,7 +499,6 @@
         event.target.value = '';
     });
 
-    // Lógica do Seletor de Tema
     const themeSwitcher = document.getElementById('theme-switcher');
     const doc = document.documentElement;
     
@@ -436,15 +509,12 @@
     }
 
     themeSwitcher.addEventListener('click', () => {
-        const currentTheme = doc.getAttribute('data-theme');
+        const currentTheme = doc.getAttribute('data-theme') || 'dark';
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
         applyTheme(newTheme);
     });
 
-    // Eventos de Carregamento
-    window.onclick = function(event) {
-        if (event.target == chartModal) closeChartModal();
-    }
+    window.onclick = function(event) { if (event.target == chartModal) closeChartModal(); }
 
     document.addEventListener('DOMContentLoaded', () => {
         const savedTheme = localStorage.getItem('theme') || 'dark';
