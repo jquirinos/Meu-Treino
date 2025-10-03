@@ -43,6 +43,7 @@
         .workout-header { text-align: center; }
         .workout-plan { display: none; } .workout-plan.active { display: block; }
         .workout-meta { color: #888; margin-top: -1rem; margin-bottom: 1rem; font-style: italic; }
+        .variation-notice { background-color: var(--warning-color); color: #1a1a1a; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: bold; }
         .exercise-card { background-color: var(--secondary-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: background-color 0.3s; }
         .exercise-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
         .exercise-title { font-size: 1.5rem; font-weight: bold; margin: 0; }
@@ -72,8 +73,7 @@
         .modal-view { display: none; } .modal-view.active { display: block; }
         .chart-controls { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
         .chart-controls select { padding: 0.5rem; background-color: var(--input-bg); color: var(--text-color); border: 1px solid #555; border-radius: 5px; }
-        .manage-button { padding: 0.5rem 1rem; background-color: var(--warning-color); color: black; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        #history-manager, #pr-manager { display: none; max-height: 400px; overflow-y: auto; }
+        #history-manager, #pr-manager { max-height: 400px; overflow-y: auto; }
         .history-manager-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem; }
         .data-io-button { padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .export-button { background-color: var(--success-color); color: white; }
@@ -141,6 +141,7 @@
             { name: 'Panturrilha Sentado', sets: 5, reps: '15-20', rest: 60 },
         ]
     };
+    const VARIATION_THRESHOLD = 12; // Número de sessões antes de sugerir variação
 
     function calculateWorkoutTime(workout) {
         const timePerSet = 45, timeBetweenExercises = 90; let totalTime = 0;
@@ -180,11 +181,19 @@
     function toggleSetCompleted(checkbox) { checkbox.closest('.set-row').classList.toggle('completed', checkbox.checked); }
 
     function renderWorkouts() {
+        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
         for (const workoutId in workouts) {
             const container = document.getElementById(`workout-${workoutId}`);
             if (!container) continue;
+
+            const workoutSessionCount = history.filter(w => w.workoutId === workoutId).length;
+            let variationNoticeHTML = '';
+            if (workoutSessionCount >= VARIATION_THRESHOLD) {
+                variationNoticeHTML = `<div class="variation-notice">🧠 **Hora de Variar?** Você já fez este treino ${workoutSessionCount} vezes. Considere trocar alguns exercícios para continuar progredindo.</div>`;
+            }
+
             const time = calculateWorkoutTime(workouts[workoutId]);
-            let html = `<div class="workout-header"><h2>${document.querySelector(`.tab-button[onclick="showWorkout('${workoutId}')"]`).textContent}</h2><p class="workout-meta">⏱️ Tempo Estimado: ~${time} minutos</p><button class="secondary-button" onclick="fillFromLastWorkout('${workoutId}')">Preencher com Último Treino</button></div>`;
+            let html = `${variationNoticeHTML}<div class="workout-header"><h2>${document.querySelector(`.tab-button[onclick="showWorkout('${workoutId}')"]`).textContent}</h2><p class="workout-meta">⏱️ Tempo Estimado: ~${time} minutos</p><button class="secondary-button" onclick="fillFromLastWorkout('${workoutId}')">Preencher com Último Treino</button></div>`;
             workouts[workoutId].forEach(ex => { html += createExerciseHTML(ex); });
             html += `<div class="notes-section"><label for="notes-${workoutId}"><h3>Notas do Treino</h3></label><textarea id="notes-${workoutId}" placeholder="Como se sentiu hoje? Alguma dor? O treino rendeu?"></textarea></div>`;
             html += `<button class="finish-button" onclick="saveWorkout('${workoutId}')">Finalizar e Salvar Treino</button>`;
@@ -234,7 +243,6 @@
             }
         }, 1000);
     }
-
     function saveWorkout(workoutId) {
         const notes = document.getElementById(`notes-${workoutId}`).value;
         const workoutData = { date: new Date().toISOString(), workoutId: workoutId, exercises: [], notes: notes };
@@ -329,14 +337,19 @@
         if (evolutionChart) evolutionChart.destroy();
         evolutionChart = new Chart(ctx, {
             type: chartType, data: { labels, datasets: [
-                { label: `Volume Total (Kg)`, data: volData, borderColor: 'rgba(0, 123, 255, 1)', backgroundColor: 'rgba(0, 123, 255, 0.5)', yAxisID: 'yVolume' },
+                                { label: `Volume Total (Kg)`, data: volData, borderColor: 'rgba(0, 123, 255, 1)', backgroundColor: 'rgba(0, 123, 255, 0.5)', yAxisID: 'yVolume' },
                 { label: `Carga Máxima (Kg)`, data: weightData, borderColor: 'rgba(40, 167, 69, 1)', backgroundColor: 'rgba(40, 167, 69, 0.5)', yAxisID: 'yWeight' }
             ]},
-            options: { responsive: true, interaction: { mode: 'index', intersect: false }, scales: {
-                x: { ticks: { color: 'var(--text-color)' } },
-                yVolume: { type: 'linear', display: true, position: 'left', ticks: { color: 'rgba(0, 123, 255, 1)' }, beginAtZero: true, title: { display: true, text: 'Volume Total', color: 'rgba(0, 123, 255, 1)'} },
-                yWeight: { type: 'linear', display: true, position: 'right', ticks: { color: 'rgba(40, 167, 69, 1)' }, beginAtZero: true, title: { display: true, text: 'Carga Máxima', color: 'rgba(40, 167, 69, 1)'}, grid: { drawOnChartArea: false } }
-            }, plugins: { legend: { labels: { color: 'var(--text-color)' } } } }
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: { ticks: { color: 'var(--text-color)' } },
+                    yVolume: { type: 'linear', display: true, position: 'left', ticks: { color: 'rgba(0, 123, 255, 1)' }, beginAtZero: true, title: { display: true, text: 'Volume Total', color: 'rgba(0, 123, 255, 1)'} },
+                    yWeight: { type: 'linear', display: true, position: 'right', ticks: { color: 'rgba(40, 167, 69, 1)' }, beginAtZero: true, title: { display: true, text: 'Carga Máxima', color: 'rgba(40, 167, 69, 1)'}, grid: { drawOnChartArea: false } }
+                },
+                plugins: { legend: { labels: { color: 'var(--text-color)' } } }
+            }
         });
     }
 
@@ -527,3 +540,4 @@
 
 </body>
 </html>
+
