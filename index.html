@@ -221,15 +221,21 @@
         const history = getHistory();
         const lastWorkout = history.slice().reverse().find(w => w.workoutId === workoutId);
         if (!lastWorkout) {
-            alert(`Nenhum treino anterior do tipo "${document.querySelector(`.tab-button[onclick="showWorkout('${workoutId}')"]`).textContent}" foi encontrado.`);
+            alert(`Nenhum treino anterior do tipo "${WORKOUT_NAMES[workoutId] || workoutId}" foi encontrado.`);
             return;
         }
+
         const workoutContainer = document.getElementById(`workout-${workoutId}`);
         lastWorkout.exercises.forEach(ex => {
             const card = workoutContainer.querySelector(`.exercise-card[data-exercise-name="${ex.name}"]`);
             if (card) {
-                const maxWeight = Math.max(0, ...ex.sets.map(s => s.weight));
-                card.querySelectorAll('.weight-input').forEach(input => input.value = maxWeight);
+                // LÓGICA CORRIGIDA:
+                const weightInputs = card.querySelectorAll('.weight-input');
+                ex.sets.forEach((set, index) => {
+                    if (weightInputs[index]) {
+                        weightInputs[index].value = set.weight;
+                    }
+                });
             }
         });
         alert('Pesos preenchidos com base no último treino.');
