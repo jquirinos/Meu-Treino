@@ -142,6 +142,21 @@
         ]
     };
     const VARIATION_THRESHOLD = 12; // Número de sessões antes de sugerir variação
+    const WORKOUT_NAMES = {
+        UpperA: "Superiores A",
+        LowerA: "Inferiores A",
+        UpperB: "Superiores B",
+        LowerB: "Inferiores B"
+};
+
+    function getHistory() {
+        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        // Garante que todas as datas sejam objetos Date, não strings
+        return history.map(workout => ({
+            ...workout,
+            date: new Date(workout.date) 
+        }));
+    }
 
     function calculateWorkoutTime(workout) {
         const timePerSet = 45, timeBetweenExercises = 90; let totalTime = 0;
@@ -150,7 +165,7 @@
     }
 
     function getPersonalRecord(exerciseName) {
-        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const history = getHistory();
         let maxWeight = 0;
         history.forEach(w => w.exercises.forEach(ex => {
             if (ex.name === exerciseName) { const currentMax = Math.max(0, ...ex.sets.map(s => s.weight)); if (currentMax > maxWeight) maxWeight = currentMax; }
@@ -181,7 +196,7 @@
     function toggleSetCompleted(checkbox) { checkbox.closest('.set-row').classList.toggle('completed', checkbox.checked); }
 
     function renderWorkouts() {
-        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const history = getHistory();
         for (const workoutId in workouts) {
             const container = document.getElementById(`workout-${workoutId}`);
             if (!container) continue;
@@ -203,7 +218,7 @@
     }
 
     function fillFromLastWorkout(workoutId) {
-        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const history = getHistory();
         const lastWorkout = history.slice().reverse().find(w => w.workoutId === workoutId);
         if (!lastWorkout) {
             alert(`Nenhum treino anterior do tipo "${document.querySelector(`.tab-button[onclick="showWorkout('${workoutId}')"]`).textContent}" foi encontrado.`);
@@ -267,7 +282,7 @@
             }
         });
         if (workoutData.exercises.length === 0) { alert("Nenhum dado para salvar."); return; }
-        let history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        let history = getHistory();
         history.push(workoutData);
         localStorage.setItem('workoutHistory', JSON.stringify(history));
         let alertMessage = `Treino salvo com sucesso!`;
@@ -304,7 +319,7 @@
     }
 
     function populateSelectors() {
-        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const history = getHistory();
         const exSet = new Set(history.flatMap(w => w.exercises.map(e => e.name)));
         const selector = document.getElementById('exerciseSelector');
         selector.innerHTML = exSet.size === 0 ? "<option>Nenhum treino salvo</option>" : "";
@@ -312,7 +327,7 @@
     }
 
     function updateChart() {
-        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const history = getHistory();
         const selEx = document.getElementById('exerciseSelector').value;
         const selPeriod = parseInt(document.getElementById('periodSelector').value);
         const chartType = document.getElementById('chartTypeSelector').value;
@@ -355,7 +370,7 @@
 
     function renderConsistencyCalendar() {
         const calendarEl = document.getElementById('consistency-calendar');
-        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const history = getHistory();
         calendarEl.innerHTML = ''; // Limpa o calendário
 
         const today = new Date();
@@ -392,7 +407,7 @@
             if (dayWorkouts.length > 0) {
                 dayEl.classList.add('has-data');
                 const dotsContainer = dayEl.querySelector('.workout-dots');
-                const workoutTypes = new Set(dayWorkouts.map(w => w.workoutId.includes('Upper') ? 'upper' : 'lower'));
+                const workoutTypes = new Set(dayWorkouts.map(w => (w.workoutId && w.workoutId.includes('Upper')) ? 'upper' : 'lower'));
                 
                 if (workoutTypes.has('upper')) {
                     const dot = document.createElement('div');
@@ -411,13 +426,13 @@
 
     function renderHistoryList() {
         const manager = document.getElementById('history-manager');
-        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const history = getHistory();
         manager.innerHTML = `<div class="history-manager-header"><h3>Histórico de Treinos</h3><div><button class="data-io-button export-button" onclick="exportData()">Exportar</button><button class="data-io-button import-button" onclick="importData()">Importar</button></div></div>`;
         if (history.length === 0) { manager.innerHTML += '<p>Nenhum treino salvo.</p>'; return; }
         history.slice().reverse().forEach((w, index) => {
             const originalIndex = history.length - 1 - index;
             const date = new Date(w.date).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
-            const workoutName = document.querySelector(`.tab-button[onclick="showWorkout('${w.workoutId}')"]`).textContent;
+            const workoutName = WORKOUT_NAMES[w.workoutId] || w.workoutId;
             const notesHTML = w.notes ? `<p class="history-item-notes">Nota: ${w.notes}</p>` : '';
             const item = document.createElement('div');
             item.className = 'history-item';
@@ -432,7 +447,7 @@
         const allExercises = new Set(Object.values(workouts).flat().map(ex => ex.name));
         let prsFound = 0;
         const prList = document.createElement('div');
-        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const history = getHistory();
 
         allExercises.forEach(exName => {
             const pr = getPersonalRecord(exName);
@@ -454,7 +469,7 @@
     }
 
     function deleteWorkout(index) {
-        let history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        let history = getHistory();
         const workoutDate = new Date(history[index].date).toLocaleDateString('pt-BR');
         if (confirm(`Você tem certeza que deseja deletar o treino do dia ${workoutDate}?`)) {
             history.splice(index, 1);
@@ -494,7 +509,7 @@
                 if (choice) {
                     const currentHistory = JSON.parse(localStorage.getItem('workoutHistory')) || [];
                     const combinedHistory = [...currentHistory, ...importedHistory];
-                    const uniqueHistory = Array.from(new Map(combinedHistory.map(item => [item.date, item])).values());
+                    const uniqueHistory = Array.from(new Map(combinedHistory.map(item => [new Date(item.date).toISOString(), item])).values());
                     localStorage.setItem('workoutHistory', JSON.stringify(uniqueHistory));
                     alert(`${importedHistory.length} registros mesclados com sucesso!`);
                 } else {
@@ -540,4 +555,3 @@
 
 </body>
 </html>
-
