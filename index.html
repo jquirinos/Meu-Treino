@@ -44,6 +44,16 @@
         .workout-plan { display: none; } .workout-plan.active { display: block; }
         .workout-meta { color: #888; margin-top: -1rem; margin-bottom: 1rem; font-style: italic; }
         .variation-notice { background-color: var(--warning-color); color: #1a1a1a; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: bold; }
+		.deload-notice {
+            background-color: var(--info-color);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+        }
         .exercise-card { background-color: var(--secondary-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: background-color 0.3s; }
         .exercise-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
         .exercise-title { font-size: 1.5rem; font-weight: bold; margin: 0; }
@@ -92,11 +102,44 @@
         .workout-dots { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; }
         .dot { width: 6px; height: 6px; border-radius: 50%; }
         .dot.upper { background-color: var(--calendar-upper-color); }
-        .dot.lower { background-color: var(--calendar-lower-color); }
+        .dot.lower { background-color: var(--calendar-lower-color); }        
+		/* ESTILOS PARA O MODO FOCO */
+        .focus-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 998;
+            display: none; /* Começa escondido */
+        }
+        .focus-overlay.active {
+            display: block;
+        }
+        .exercise-card.in-focus {
+            position: relative;
+            z-index: 999;
+            border: 2px solid var(--pr-color);
+        }
+        .focus-button {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .focus-button:hover {
+            opacity: 1;
+        }
+
     </style>
 </head>
 <body>
     <div class="container">
+	    <div id="deload-notice-container"></div>
         <div class="header-container">
             <h1>Plano de Treino</h1>
             <button class="theme-switcher" id="theme-switcher">🌙</button>
@@ -118,29 +161,42 @@
 <script>
     const workouts = {
         UpperA: [
-            { name: 'Supino Reto com Barra', sets: 4, reps: '6-8', rest: 150 }, { name: 'Crucifixo Inclinado com Halteres', sets: 3, reps: '10-12', rest: 90 },
-            { name: 'Desenvolvimento Militar', sets: 3, reps: '8-10', rest: 120 }, { name: 'Elevação Frontal com Halteres', sets: 3, reps: '10-12', rest: 90 },
-            { name: 'Remada Curvada', sets: 4, reps: '6-8', rest: 120 }, { name: 'Rosca Direta com Barra', sets: 3, reps: '8-10', rest: 90 },
-            { name: 'Tríceps Testa', sets: 3, reps: '8-10', rest: 90 },
+            { name: 'Supino Reto com Barra', sets: 4, reps: '6-8', rest: 150, targetMuscle: 'Peito' }, 
+            { name: 'Crucifixo Inclinado com Halteres', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Peito' },
+            { name: 'Desenvolvimento Militar', sets: 3, reps: '8-10', rest: 120, targetMuscle: 'Ombros' }, 
+            { name: 'Elevação Frontal com Halteres', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Ombros' },
+            { name: 'Remada Curvada', sets: 4, reps: '6-8', rest: 120, targetMuscle: 'Costas' }, 
+            { name: 'Rosca Direta com Barra', sets: 3, reps: '8-10', rest: 90, targetMuscle: 'Bíceps' },
+            { name: 'Tríceps Testa', sets: 3, reps: '8-10', rest: 90, targetMuscle: 'Tríceps' },
         ],
         LowerA: [
-            { name: 'Agachamento Livre', sets: 4, reps: '6-8', rest: 180 }, { name: 'Leg Press 45º', sets: 3, reps: '8-10', rest: 120 },
-            { name: 'Levantamento Terra Romeno', sets: 4, reps: '8-10', rest: 120 }, { name: 'Cadeira Flexora', sets: 3, reps: '10-12', rest: 90 },
-            { name: 'Panturrilha em Pé', sets: 5, reps: '10-15', rest: 60 },
+            { name: 'Agachamento Livre', sets: 4, reps: '6-8', rest: 180, targetMuscle: 'Pernas' }, 
+            { name: 'Leg Press 45º', sets: 3, reps: '8-10', rest: 120, targetMuscle: 'Pernas' },
+            { name: 'Levantamento Terra Romeno', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Posteriores' }, 
+            { name: 'Cadeira Flexora', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Posteriores' },
+            { name: 'Panturrilha em Pé', sets: 5, reps: '10-15', rest: 60, targetMuscle: 'Panturrilhas' },
         ],
         UpperB: [
-            { name: 'Barra Fixa (ou Puxada Frontal)', sets: 4, reps: '6-8', rest: 120 }, { name: 'Remada Cavalinho', sets: 3, reps: '8-10', rest: 120 },
-            { name: 'Supino Inclinado com Halteres', sets: 4, reps: '8-10', rest: 120 }, { name: 'Cross Over Polia Alta', sets: 3, reps: '10-12', rest: 90 },
-            { name: 'Elevação Lateral com Halteres', sets: 4, reps: '10-15', rest: 90 }, { name: 'Crucifixo Invertido (Bent-Over)', sets: 3, reps: '12-15', rest: 90 },
-            { name: 'Tríceps Corda', sets: 3, reps: '10-12', rest: 90 }, { name: 'Tríceps Francês com Halter', sets: 3, reps: '10-12', rest: 90 },
-            { name: 'Rosca Martelo', sets: 3, reps: '8-10', rest: 90 }, { name: 'Rosca Inclinada com Halteres', sets: 3, reps: '10-12', rest: 90 },
+            { name: 'Barra Fixa (ou Puxada Frontal)', sets: 4, reps: '6-8', rest: 120, targetMuscle: 'Costas' }, 
+            { name: 'Remada Cavalinho', sets: 3, reps: '8-10', rest: 120, targetMuscle: 'Costas' },
+            { name: 'Supino Inclinado com Halteres', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Peito' }, 
+            { name: 'Cross Over Polia Alta', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Peito' },
+            { name: 'Elevação Lateral com Halteres', sets: 4, reps: '10-15', rest: 90, targetMuscle: 'Ombros' }, 
+            { name: 'Crucifixo Invertido (Bent-Over)', sets: 3, reps: '12-15', rest: 90, targetMuscle: 'Ombros' },
+            { name: 'Tríceps Corda', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Tríceps' }, 
+            { name: 'Tríceps Francês com Halter', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Tríceps' },
+            { name: 'Rosca Martelo', sets: 3, reps: '8-10', rest: 90, targetMuscle: 'Bíceps' }, 
+            { name: 'Rosca Inclinada com Halteres', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Bíceps' },
         ],
         LowerB: [
-            { name: 'Levantamento Terra Convencional', sets: 4, reps: '5-6', rest: 180 }, { name: 'Elevação Pélvica com Barra', sets: 4, reps: '8-10', rest: 120 },
-            { name: 'Afundo com Halteres', sets: 4, reps: '8-10', rest: 120 }, { name: 'Cadeira Extensora', sets: 3, reps: '10-12', rest: 90 },
-            { name: 'Panturrilha Sentado', sets: 5, reps: '15-20', rest: 60 },
+            { name: 'Levantamento Terra Convencional', sets: 4, reps: '5-6', rest: 180, targetMuscle: 'Posteriores' }, 
+            { name: 'Elevação Pélvica com Barra', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Glúteos' },
+            { name: 'Afundo com Halteres', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Pernas' }, 
+            { name: 'Cadeira Extensora', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Pernas' },
+            { name: 'Panturrilha Sentado', sets: 5, reps: '15-20', rest: 60, targetMuscle: 'Panturrilhas' },
         ]
     };
+
     const VARIATION_THRESHOLD = 12; // Número de sessões antes de sugerir variação
     const WORKOUT_NAMES = {
         UpperA: "Superiores A",
@@ -148,6 +204,34 @@
         UpperB: "Superiores B",
         LowerB: "Inferiores B"
 };
+    // LÓGICA PARA O MODO FOCO
+    let focusOverlay;
+
+    function createFocusOverlay() {
+        if (document.getElementById('focus-overlay')) return;
+        focusOverlay = document.createElement('div');
+        focusOverlay.id = 'focus-overlay';
+        focusOverlay.className = 'focus-overlay';
+        focusOverlay.onclick = () => toggleFocus(null, true); // Clicar fora desativa o foco
+        document.body.appendChild(focusOverlay);
+    }
+
+    function toggleFocus(button, forceOff = false) {
+        const activeCard = document.querySelector('.exercise-card.in-focus');
+
+        if (forceOff || activeCard) {
+            if(activeCard) activeCard.classList.remove('in-focus');
+            focusOverlay.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        } else {
+            const card = button.closest('.exercise-card');
+            card.classList.add('in-focus');
+            focusOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Impede o scroll da página
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
 
     function getHistory() {
         const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
@@ -190,7 +274,7 @@
         for (let i = 1; i <= exercise.sets; i++) {
             tableRows += `<tr class="set-row"><td>${i}</td><td><input type="number" class="input-field weight-input" placeholder="${placeholder}"></td><td><input type="checkbox" class="set-checkbox" onchange="toggleSetCompleted(this)"></td></tr>`;
         }
-        return `<div class="exercise-card" data-exercise-name="${exercise.name}" data-rep-goal="${exercise.reps.split('-')[1] || exercise.reps}"><div class="exercise-header"><div><h3 class="exercise-title">${exercise.name}${prBadge}</h3><p class="exercise-meta">${exercise.sets} séries x ${exercise.reps} reps</p></div><button class="timer-button" onclick="startTimer(this, ${exercise.rest})">Iniciar Descanso (${exercise.rest}s)</button></div><table class="sets-table"><thead><tr><th>Série</th><th>Peso (kg)</th><th>Feito ✔</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+        return `<div class="exercise-card" data-exercise-name="${exercise.name}" data-rep-goal="${exercise.reps.split('-')[1] || exercise.reps}"><div class="exercise-header"><div><h3 class="exercise-title">${exercise.name}${prBadge}</h3><p class="exercise-meta">${exercise.sets} séries x ${exercise.reps} reps</p></div><div><button class="focus-button" onclick="toggleFocus(this)">👁️</button><button class="timer-button" onclick="startTimer(this, ${exercise.rest})">Iniciar Descanso (${exercise.rest}s)</button></div></div><table class="sets-table"><thead><tr><th>Série</th><th>Peso (kg)</th><th>Feito ✔</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
     }
     
     function toggleSetCompleted(checkbox) { checkbox.closest('.set-row').classList.toggle('completed', checkbox.checked); }
@@ -208,13 +292,14 @@
             }
 
             const time = calculateWorkoutTime(workouts[workoutId]);
-            let html = `${variationNoticeHTML}<div class="workout-header"><h2>${document.querySelector(`.tab-button[onclick="showWorkout('${workoutId}')"]`).textContent}</h2><p class="workout-meta">⏱️ Tempo Estimado: ~${time} minutos</p><button class="secondary-button" onclick="fillFromLastWorkout('${workoutId}')">Preencher com Último Treino</button></div>`;
+            let html = `${variationNoticeHTML}<div class="workout-header"><h2>${WORKOUT_NAMES[workoutId] || workoutId}</h2><p class="workout-meta">⏱️ Tempo Estimado: ~${time} minutos</p><button class="secondary-button" onclick="fillFromLastWorkout('${workoutId}')">Preencher com Último Treino</button></div>`;
             workouts[workoutId].forEach(ex => { html += createExerciseHTML(ex); });
-            html += `<div class="notes-section"><label for="notes-${workoutId}"><h3>Notas do Treino</h3></label><textarea id="notes-${workoutId}" placeholder="Como se sentiu hoje? Alguma dor? O treino rendeu?"></textarea></div>`;
+
+			html += `<div class="notes-section"><label for="notes-${workoutId}"><h3>Notas do Treino</h3></label><textarea id="notes-${workoutId}" placeholder="Como se sentiu hoje? Alguma dor? O treino rendeu?"></textarea></div>`;
             html += `<button class="finish-button" onclick="saveWorkout('${workoutId}')">Finalizar e Salvar Treino</button>`;
             container.innerHTML = html;
         }
-        document.getElementById('chartModal').innerHTML = `<div class="modal-content"><span class="close-button" onclick="closeChartModal()">&times;</span><div class="modal-tabs"><button class="modal-tab-button active" onclick="showModalView('evolution')">Evolução</button><button class="modal-tab-button" onclick="showModalView('consistency')">Consistência</button><button class="modal-tab-button" onclick="showModalView('records')">Recordes</button><button class="modal-tab-button" onclick="showModalView('history')">Histórico</button></div><div id="evolution-view" class="modal-view active"><div class="chart-controls"><select id="exerciseSelector"></select><select id="periodSelector"><option value="30">1 Mês</option><option value="90">3 Meses</option><option value="180">6 Meses</option><option value="365">1 Ano</option></select><select id="chartTypeSelector"><option value="bar">Barras</option><option value="line">Linhas</option></select></div><canvas id="evolutionChart"></canvas></div><div id="consistency-view" class="modal-view"><h3 style="text-align:center;">Frequência de Treinos</h3><div id="consistency-calendar"></div></div><div id="records-view" class="modal-view"><div id="pr-manager"></div></div><div id="history-view" class="modal-view"><div id="history-manager"></div></div></div>`;
+        document.getElementById('chartModal').innerHTML = `<div class="modal-content"><span class="close-button" onclick="closeChartModal()">&times;</span><div class="modal-tabs"><button class="modal-tab-button active" onclick="showModalView('evolution')">Evolução</button><button class="modal-tab-button" onclick="showModalView('balance')">Balanço</button><button class="modal-tab-button" onclick="showModalView('consistency')">Consistência</button><button class="modal-tab-button" onclick="showModalView('records')">Recordes</button><button class="modal-tab-button" onclick="showModalView('history')">Histórico</button></div><div id="evolution-view" class="modal-view active"><div class="chart-controls"><select id="exerciseSelector"></select><select id="periodSelector"><option value="30">1 Mês</option><option value="90">3 Meses</option><option value="180">6 Meses</option><option value="365">1 Ano</option></select><select id="chartTypeSelector"><option value="bar">Barras</option><option value="line">Linhas</option></select></div><canvas id="evolutionChart"></canvas></div><div id="balance-view" class="modal-view"><h3 style="text-align:center;">Balanço Muscular (Volume Total)</h3><canvas id="balanceChart"></canvas></div><div id="consistency-view" class="modal-view"><h3 style="text-align:center;">Frequência de Treinos</h3><div id="consistency-calendar"></div></div><div id="records-view" class="modal-view"><div id="pr-manager"></div></div><div id="history-view" class="modal-view"><div id="history-manager"></div></div></div>`;
     }
 
     function fillFromLastWorkout(workoutId) {
@@ -319,6 +404,7 @@
         document.querySelector(`.modal-tab-button[onclick="showModalView('${viewId}')"]`).classList.add('active');
 
         if (viewId === 'evolution') updateChart();
+		if (viewId === 'balance') updateBalanceChart();
         if (viewId === 'consistency') renderConsistencyCalendar();
         if (viewId === 'records') renderPrList();
         if (viewId === 'history') renderHistoryList();
@@ -372,6 +458,149 @@
                 plugins: { legend: { labels: { color: 'var(--text-color)' } } }
             }
         });
+    }
+
+    let balanceChart;
+    function updateBalanceChart() {
+        const history = getHistory();
+        const selPeriod = parseInt(document.getElementById('periodSelector').value);
+        if (history.length === 0) { if (balanceChart) balanceChart.destroy(); return; }
+
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - selPeriod);
+
+        const volumeByMuscle = {};
+        const allMuscles = new Set(Object.values(workouts).flat().map(ex => ex.targetMuscle));
+        allMuscles.forEach(m => volumeByMuscle[m] = 0);
+
+        const filteredHistory = history.filter(w => w.date >= cutoff);
+
+        filteredHistory.forEach(workout => {
+            workout.exercises.forEach(exercise => {
+                const exerciseInfo = Object.values(workouts).flat().find(ex => ex.name === exercise.name);
+                if (exerciseInfo && exerciseInfo.targetMuscle) {
+                    const volume = exercise.sets.reduce((sum, set) => sum + (set.weight * set.reps), 0);
+                    volumeByMuscle[exerciseInfo.targetMuscle] += volume;
+                }
+            });
+        });
+
+        const labels = Object.keys(volumeByMuscle);
+        const data = Object.values(volumeByMuscle);
+
+        const ctx = document.getElementById('balanceChart').getContext('2d');
+        if (balanceChart) balanceChart.destroy();
+        balanceChart = new Chart(ctx, {
+            type: 'doughnut', // Ou 'pie'
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Volume por Músculo',
+                    data: data,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)',
+                        'rgba(199, 199, 199, 0.7)'
+                    ],
+                    borderColor: 'var(--secondary-color)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: 'var(--text-color)' }
+                    },
+                    title: {
+                        display: true,
+                        text: `Distribuição de Volume nos Últimos ${selPeriod} Dias`,
+                        color: 'var(--text-color)'
+                    }
+                }
+            }
+        });
+    }
+	
+	function checkForDeloadSuggestion() {
+        const history = getHistory();
+        if (history.length < 21) return; // Precisa de pelo menos ~3 semanas de dados
+
+        const today = new Date();
+        const fourWeeksAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 28);
+
+        const recentHistory = history.filter(w => w.date >= fourWeeksAgo);
+        if (recentHistory.length < 9) return; // Pelo menos ~3 treinos/semana
+
+        // 1. Análise de Volume Semanal
+        const getWeekNumber = (d) => {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        };
+
+        const volumeByWeek = {};
+        recentHistory.forEach(workout => {
+            const week = `${workout.date.getFullYear()}-${getWeekNumber(workout.date)}`;
+            const workoutVolume = workout.exercises.reduce((totalVol, ex) => 
+                totalVol + ex.sets.reduce((vol, set) => vol + (set.weight * set.reps), 0), 0);
+            
+            if (!volumeByWeek[week]) volumeByWeek[week] = 0;
+            volumeByWeek[week] += workoutVolume;
+        });
+
+        const weeklyVolumes = Object.values(volumeByWeek).sort((a, b) => a - b);
+        if (weeklyVolumes.length < 3) return; // Precisa de pelo menos 3 semanas de dados de volume
+
+        // Condição 1: Volume estagnou ou caiu? (Comparamos a última semana com a melhor das últimas 4)
+        const lastWeekVolume = weeklyVolumes[weeklyVolumes.length - 1];
+        const peakWeekVolume = Math.max(...weeklyVolumes);
+        const isVolumeStagnated = lastWeekVolume <= peakWeekVolume;
+
+        // 2. Análise de Recordes Pessoais (PRs)
+        const twoWeeksAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 14);
+        let newPrsInLastTwoWeeks = 0;
+        const historyBeforeTwoWeeks = recentHistory.filter(w => w.date < twoWeeksAgo);
+        const historyLastTwoWeeks = recentHistory.filter(w => w.date >= twoWeeksAgo);
+
+        const prsBefore = {};
+        Object.values(workouts).flat().forEach(ex => {
+            let maxWeight = 0;
+            historyBeforeTwoWeeks.forEach(w => w.exercises.forEach(e => {
+                if (e.name === ex.name) {
+                    const currentMax = Math.max(0, ...e.sets.map(s => s.weight));
+                    if (currentMax > maxWeight) maxWeight = currentMax;
+                }
+            }));
+            prsBefore[ex.name] = maxWeight;
+        });
+
+        historyLastTwoWeeks.forEach(w => w.exercises.forEach(e => {
+            const prBefore = prsBefore[e.name] || 0;
+            const currentMax = Math.max(0, ...e.sets.map(s => s.weight));
+            if (currentMax > prBefore) {
+                newPrsInLastTwoWeeks++;
+            }
+        }));
+        
+        // Condição 2: Poucos ou nenhum PR nas últimas 2 semanas?
+        const havePRsStagnated = newPrsInLastTwoWeeks <= 1;
+
+        // 3. Decisão Final
+        if (isVolumeStagnated && havePRsStagnated) {
+            const noticeContainer = document.getElementById('deload-notice-container');
+            const lastNoticeShown = localStorage.getItem('lastDeloadNotice');
+            const thirtyDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30).toISOString();
+
+            // Só mostra o aviso se não tiver mostrado nos últimos 30 dias
+            if (!lastNoticeShown || lastNoticeShown < thirtyDaysAgo) {
+                noticeContainer.innerHTML = `<div class="deload-notice" onclick="this.style.display='none'">📉 **Sinais de Fadiga?** Seu progresso de volume e força estagnou. Isso pode ser um sinal para uma semana de *deload* (treinos mais leves) para supercompensar e voltar mais forte.</div>`;
+                localStorage.setItem('lastDeloadNotice', today.toISOString());
+            }
+        }
     }
 
     function renderConsistencyCalendar() {
@@ -553,9 +782,10 @@
     document.addEventListener('DOMContentLoaded', () => {
         const savedTheme = localStorage.getItem('theme') || 'dark';
         applyTheme(savedTheme);
+		createFocusOverlay();
         renderWorkouts();
-        const activeTab = document.querySelector('.tab-button.active').getAttribute('onclick').match(/'([^']+)'/)[1];
-        showWorkout(activeTab);
+		checkForDeloadSuggestion();
+        showWorkout('UpperA');
     });
 </script>
 
