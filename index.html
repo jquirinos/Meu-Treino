@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meu Treino de Hipertrofia</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <style>
         :root {
             --primary-color: #0a0a0a; --secondary-color: #1a1a1a; --text-color: #e0e0e0;
@@ -24,18 +24,30 @@
             --muscle-glutes: #9c27b0; /* Roxo */
             --muscle-hamstrings: #8bc34a; /* Verde Claro */
             --muscle-calves: #607d8b; /* Cinza Azulado */
+            
+            /* Nova variável para cor da grade do gráfico que muda com o tema */
+            --chart-grid-color: rgba(68, 68, 68, 0.2); 
+            /* Nova cor para E1RM */
+            --e1rm-color: #9c27b0; 
+            /* NOVO: Cor para RPE fora da faixa (7-9) */
+            --rpe-warning-color: var(--warning-color);
+            /* NOVO: Cor para a Linha de Progresso */
+            --progress-color: var(--success-color);
+            /* NOVO: Cor da linha de volume */
+            --volume-line-color: var(--accent-color);
         }
         [data-theme="light"] {
             --primary-color: #f4f4f9; --secondary-color: #ffffff; --text-color: #0a0a0a;
             --input-bg: #e9ecef; --border-color: #dee2e6;
             --calendar-day-bg: #e9ecef;
+            --chart-grid-color: rgba(0, 0, 0, 0.1); /* Grade mais clara no modo claro */
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             background-color: var(--primary-color ); color: var(--text-color); margin: 0; padding: 1rem;
             line-height: 1.6; transition: background-color 0.3s, color 0.3s;
         }
-        .container { max-width: 800px; margin: 0 auto; padding: 1rem; }
+        .container { max-width: 800px; margin: 0 auto; padding: 0 1rem; }
         .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--accent-color); }
         h1 { text-align: left; color: var(--accent-color); border-bottom: none; margin: 0; padding-bottom: 0.5rem; font-size: 1.8rem; }
         h2, h3 { text-align: center; color: var(--accent-color); }
@@ -81,6 +93,34 @@
         .exercise-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
         .exercise-title { font-size: 1.5rem; font-weight: bold; margin: 0; }
         .exercise-meta { font-size: 0.9rem; color: #aaa; }
+        /* NOVO: Estilo para a barra de intensidade */
+        .intensity-bar {
+            font-size: 0.85rem; 
+            font-weight: bold; 
+            color: var(--text-color);
+            padding: 5px 10px;
+            border-radius: 5px;
+            background-color: var(--input-bg);
+            margin-top: 5px;
+            display: inline-block;
+            transition: background-color 0.3s;
+        }
+        .intensity-bar.high { background-color: var(--danger-color); color: white; }
+        .intensity-bar.low { background-color: var(--info-color); color: white; }
+        /* NOVO: Estilo para Prescrição de Carga */
+        .prescribed-load {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--pr-color);
+            padding: 5px 10px;
+            border: 2px solid var(--pr-color);
+            border-radius: 5px;
+            background-color: rgba(249, 177, 21, 0.1);
+            margin-top: 5px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+
         .pr-badge { 
             font-size: 0.8rem; color: var(--pr-color); font-weight: bold; margin-left: 10px; 
             text-shadow: 0 0 5px rgba(249, 177, 21, 0.7); /* Efeito de brilho */
@@ -96,6 +136,15 @@
         .input-field { width: 50px; padding: 0.5rem; background-color: var(--input-bg); color: var(--text-color); border: 1px solid #555; border-radius: 5px; text-align: center; font-size: 1rem; }
         .input-field.weight-input { width: 70px; } /* Maior para o peso */
         .input-field.reps-input { width: 50px; } /* Menor para as reps */
+        .input-field.rpe-input { 
+            width: 50px; 
+            /* NOVO: Estilo para RPE fora da zona ideal */
+            transition: border-color 0.3s;
+        } 
+        .input-field.rpe-input.warning {
+            border-color: var(--rpe-warning-color) !important;
+            box-shadow: 0 0 5px var(--rpe-warning-color);
+        }
         .input-field::placeholder { color: #888; font-size: 0.9em; }
         .set-checkbox { width: 22px; height: 22px; cursor: pointer; }
         .timer-button { 
@@ -121,53 +170,76 @@
         .modal-tab-button { background: none; border: none; color: var(--text-color); padding: 1rem; font-size: 1rem; cursor: pointer; border-bottom: 3px solid transparent; }
         .modal-tab-button.active { border-bottom-color: var(--accent-color); font-weight: bold; }
         .modal-view { display: none; } .modal-view.active { display: block; }
-        .chart-controls { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
-        .chart-controls select { padding: 0.5rem; background-color: var(--input-bg); color: var(--text-color); border: 1px solid #555; border-radius: 5px; }
+        
+        /* NOVO/AJUSTADO: Estilo para o Canvas dos Gráficos */
+        #evolutionChart, #balanceChart, #recordsUpperChart, #recordsLowerChart, #progressorsChart, #weeklyVolumeChart { 
+            /* Ajuste de tamanho para o gráfico */
+            height: 350px !important; 
+            max-height: 350px; 
+            width: 100%; /* Garante que ele preencha o container */
+            background-color: var(--secondary-color);
+            padding: 15px;
+            border-radius: 8px;
+            box-sizing: border-box; /* Inclui padding e border no tamanho total */
+            margin-bottom: 1.5rem; /* Espaçamento entre os gráficos */
+        }
+
         #history-manager, #pr-manager { max-height: 400px; overflow-y: auto; }
         .history-manager-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem; }
         .data-io-button { padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .export-button { background-color: var(--success-color); color: white; }
         .import-button { background-color: var(--info-color); color: white; }
-        .history-item, .pr-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border-color); }
-        .history-item-info, .pr-item-info { font-size: 0.9rem; }
+        .history-item, .pr-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; }
+        .pr-item { justify-content: flex-start; gap: 20px; }
+        .pr-item-info { font-size: 0.9rem; flex-basis: 35%; }
+        .pr-item-details { 
+            font-size: 0.9rem; 
+            font-weight: bold; 
+            flex-basis: 25%;
+            text-align: right;
+            color: var(--pr-color);
+        }
+        .pr-item-e1rm {
+             font-size: 0.9rem; 
+             font-weight: bold; 
+             flex-basis: 25%;
+             text-align: right;
+             color: var(--e1rm-color);
+        }
+        /* NOVO: Estilo para itens de progresso */
+        .progress-item { justify-content: space-between; gap: 20px; }
+        .progress-item-e1rm {
+             font-size: 0.9rem; 
+             font-weight: bold; 
+             text-align: right;
+             color: var(--progress-color);
+        }
+
         .history-item-info strong, .pr-item-info strong { color: var(--accent-color); }
-        .pr-item-details { color: var(--pr-color); font-weight: bold; }
         .history-item-notes { font-style: italic; color: #aaa; font-size: 0.85rem; margin-top: 5px; max-width: 80%; }
         .delete-btn { background: transparent; border: none; color: var(--danger-color); font-size: 1.5rem; cursor: pointer; }
+
+        /* --- ESTILO: CONSISTÊNCIA --- */
         #consistency-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
         .calendar-header { text-align: center; font-weight: bold; font-size: 0.8rem; }
-
-        /* --- ESTILO: PREENCHIMENTO COMPLETO --- */
         .calendar-day { 
-            background-color: var(--calendar-day-bg); 
-            height: 40px; border-radius: 5px; 
-            transition: background-color 0.2s, opacity 0.2s; 
-            position: relative; 
-            cursor: default; 
+            background-color: var(--calendar-day-bg); height: 40px; border-radius: 5px; 
+            transition: background-color 0.2s, opacity 0.2s; position: relative; cursor: default; 
         }
-        .calendar-day.has-data:hover { opacity: 0.8; } /* Efeito de hover nos dias preenchidos */
+        .calendar-day.has-data:hover { opacity: 0.8; }
         .calendar-day span { 
-            position: absolute; top: 5px; left: 5px; font-size: 0.7rem; 
-            transition: color 0.2s; /* Adicionar transição para cor do texto */
+            position: absolute; top: 5px; left: 5px; font-size: 0.7rem; transition: color 0.2s; 
         }
-        
-        /* Cores de preenchimento */
         .calendar-day.upper-only { background-color: var(--calendar-upper-color); }
         .calendar-day.lower-only { background-color: var(--calendar-lower-color); }
-        
-        /* Gradiente para dias com Upper e Lower (Mixed) */
         .calendar-day.mixed { 
             background: linear-gradient(45deg, var(--calendar-upper-color) 50%, var(--calendar-lower-color) 50%); 
         }
-
-        /* Cor do número do dia branca para contraste */
         .calendar-day.upper-only span, 
         .calendar-day.lower-only span, 
         .calendar-day.mixed span { 
-            color: white; 
-            font-weight: bold; 
+            color: white; font-weight: bold; 
         }
-        /* --- FIM NOVO ESTILO --- */
 
 		.focus-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9);
@@ -199,7 +271,107 @@
         .toast-success { border-left-color: var(--success-color); }
         .toast-error { border-left-color: var(--danger-color); }
         .toast-warning { border-left-color: var(--warning-color); }
+        .toast-pr { border-left-color: var(--pr-color); }
 
+        /* --- NOVO ESTILO: MODERNIZAÇÃO DA ABA EVOLUÇÃO (GRÁFICOS) --- */
+        .chart-mode-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        .chart-mode-button {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .chart-mode-button:first-child { border-radius: 8px 0 0 8px; border-right: none; }
+        .chart-mode-button:last-child { border-radius: 0 8px 8px 0; }
+        .chart-mode-button.active {
+            background-color: var(--accent-color);
+            color: var(--primary-color);
+            border-color: var(--accent-color);
+        }
+        .chart-controls {
+            padding: 1rem;
+            background-color: var(--input-bg);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .chart-select-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .chart-controls select { padding: 0.5rem; background-color: var(--secondary-color); color: var(--text-color); border: 1px solid #555; border-radius: 5px; }
+
+        /* Estilo para o novo seletor de modo (Individual vs Semanal) */
+        #evolutionModeSelector {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 1rem;
+        }
+        .evolution-mode-button {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            border: 1px solid var(--accent-color);
+            background-color: transparent;
+            color: var(--accent-color);
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .evolution-mode-button:first-child { border-radius: 8px 0 0 8px; }
+        .evolution-mode-button:last-child { border-radius: 0 8px 8px 0; }
+        .evolution-mode-button.active {
+            background-color: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        /* --- Melhoria de Responsividade (Mobile) --- */
+        @media (max-width: 600px) {
+            body { padding: 0; }
+            .container { padding: 0.5rem; }
+            h1 { font-size: 1.5rem; }
+            .main-controls, .workout-selector { gap: 0.5rem; margin-bottom: 1rem; }
+            .tab-button { padding: 0.5rem 0.5rem; font-size: 0.8rem; flex-grow: 1; min-width: unset; } 
+            .exercise-card { padding: 1rem 0.5rem; margin-bottom: 1rem; }
+            .exercise-header { flex-direction: column; align-items: stretch; gap: 0.5rem; text-align: center; }
+            .exercise-header > div:first-child { text-align: center; }
+            .sets-table { table-layout: fixed; }
+            .sets-table th, .sets-table td { padding: 0.5rem 0.1rem; font-size: 0.8rem; }
+            .sets-table th { font-size: 0.7rem; }
+            .input-field { width: 30px; padding: 0.4rem; font-size: 0.8rem; }
+            .input-field.weight-input { width: 45px; } 
+            .input-field.reps-input { width: 30px; }
+            .input-field.rpe-input { width: 30px; } /* Ajuste de responsividade para RPE */
+            .timer-button { min-width: 100%; margin-top: 0.5rem; font-size: 0.9rem; }
+            .modal-content { padding: 1rem 0.5rem; }
+            .chart-controls, .chart-select-group { flex-direction: column; align-items: stretch; }
+            .chart-controls select { width: 100%; margin-bottom: 0.5rem; }
+            .modal-tabs { overflow-x: auto; white-space: nowrap; }
+            .modal-tab-button { flex-shrink: 0; }
+
+            .pr-item { flex-direction: column; align-items: flex-start; gap: 5px; }
+            .pr-item-info, .pr-item-details, .pr-item-e1rm { flex-basis: 100%; text-align: left; }
+            .pr-item-details { color: var(--pr-color); }
+            .pr-item-e1rm { color: var(--e1rm-color); }
+            
+            .prescribed-load { font-size: 0.9rem; margin-top: 0; }
+
+            /* Ajuste o seletor de modo na aba de evolução */
+            #evolutionModeSelector { flex-direction: row; }
+            .evolution-mode-button:first-child, .evolution-mode-button:last-child { border-radius: 8px; margin: 5px 0; }
+        }
     </style>
 </head>
 <body>
@@ -231,38 +403,41 @@
 <script>
     const workouts = {
         UpperA: [
-            { name: 'Supino Reto com Barra', sets: 4, reps: '6-8', rest: 150, targetMuscle: 'Peito' }, 
+            { name: 'Supino Reto com Barra', sets: 3, reps: '6-8', rest: 150, targetMuscle: 'Peito' },
             { name: 'Crucifixo Inclinado com Halteres', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Peito' },
-            { name: 'Desenvolvimento Militar', sets: 3, reps: '8-10', rest: 120, targetMuscle: 'Ombros' }, 
-            { name: 'Elevação Frontal com Halteres', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Ombros' },
-            { name: 'Remada Curvada', sets: 4, reps: '6-8', rest: 120, targetMuscle: 'Costas' }, 
+            { name: 'Desenvolvimento Militar', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Ombros' },
+            { name: 'Elevação Frontal com Halteres', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Ombros' },
+            { name: 'Remada Curvada', sets: 4, reps: '6-8', rest: 120, targetMuscle: 'Costas' },
+			{ name: 'Pull down', sets: 4, reps: '6-8', rest: 120, targetMuscle: 'Costas' },
             { name: 'Rosca Direta com Barra', sets: 3, reps: '8-10', rest: 90, targetMuscle: 'Bíceps' },
-            { name: 'Tríceps Testa', sets: 3, reps: '8-10', rest: 90, targetMuscle: 'Tríceps' },
+            { name: 'Rosca Scot', sets: 3, reps: '8-10', rest: 90, targetMuscle: 'Bíceps' },
+            { name: 'Tríceps Testa com Barra', sets: 3, reps: '8-10', rest: 90, targetMuscle: 'Tríceps' },
+			{ name: 'Tríceps Mergulho paralelas', sets: 3, reps: '8-10', rest: 90, targetMuscle: 'Tríceps' },
         ],
         LowerA: [
-            { name: 'Agachamento Livre', sets: 4, reps: '6-8', rest: 180, targetMuscle: 'Pernas' }, 
-            { name: 'Leg Press 45º', sets: 3, reps: '8-10', rest: 120, targetMuscle: 'Pernas' },
-            { name: 'Levantamento Terra Romeno', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Posteriores' }, 
-            { name: 'Cadeira Flexora', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Posteriores' },
+            { name: 'Agachamento Livre', sets: 4, reps: '6-8', rest: 180, targetMuscle: 'Pernas' },
+            { name: 'Leg Press 45º', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Pernas' },
+            { name: 'Levantamento Terra Romeno', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Posteriores' },
+            { name: 'Cadeira Flexora', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Posteriores' },
             { name: 'Panturrilha em Pé', sets: 5, reps: '10-15', rest: 60, targetMuscle: 'Panturrilhas' },
         ],
         UpperB: [
-            { name: 'Barra Fixa (ou Puxada Frontal)', sets: 4, reps: '6-8', rest: 120, targetMuscle: 'Costas' }, 
+            { name: 'Barra Fixa (ou Puxada Frontal)', sets: 3, reps: '6-8', rest: 120, targetMuscle: 'Costas' },
             { name: 'Remada Cavalinho', sets: 3, reps: '8-10', rest: 120, targetMuscle: 'Costas' },
-            { name: 'Supino Inclinado com Halteres', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Peito' }, 
-            { name: 'Cross Over Polia Alta', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Peito' },
-            { name: 'Elevação Lateral com Halteres', sets: 4, reps: '10-15', rest: 90, targetMuscle: 'Ombros' }, 
-            { name: 'Crucifixo Invertido (Bent-Over)', sets: 3, reps: '12-15', rest: 90, targetMuscle: 'Ombros' },
-            { name: 'Tríceps Corda', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Tríceps' }, 
+            { name: 'Supino Inclinado com Halteres', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Peito' },
+            { name: 'Cross Over Polia Alta', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Peito' },
+            { name: 'Elevação Lateral com Halteres', sets: 4, reps: '10-15', rest: 90, targetMuscle: 'Ombros' },
+            { name: 'Crucifixo Invertido (Bent-Over)', sets: 4, reps: '12-15', rest: 90, targetMuscle: 'Ombros' },
+            { name: 'Tríceps Corda', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Tríceps' },
             { name: 'Tríceps Francês com Halter', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Tríceps' },
-            { name: 'Rosca Martelo', sets: 3, reps: '8-10', rest: 90, targetMuscle: 'Bíceps' }, 
+            { name: 'Rosca Martelo', sets: 3, reps: '8-10', rest: 90, targetMuscle: 'Bíceps' },
             { name: 'Rosca Inclinada com Halteres', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Bíceps' },
         ],
         LowerB: [
-            { name: 'Agachamento Livre', sets: 3, reps: '5-6', rest: 180, targetMuscle: 'Posteriores' }, 
+            { name: 'Agachamento Livre', sets: 4, reps: '5-6', rest: 180, targetMuscle: 'Pernas' },
             { name: 'Levantamento Terra Convencional', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Glúteos' },
-            { name: 'Afundo com Halteres', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Pernas' }, 
-            { name: 'Cadeira Extensora', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Pernas' },
+            { name: 'Afundo com Halteres', sets: 4, reps: '8-10', rest: 120, targetMuscle: 'Pernas' },
+            { name: 'Cadeira Extensora', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Pernas' },
             { name: 'Panturrilha Sentado', sets: 5, reps: '15-20', rest: 60, targetMuscle: 'Panturrilhas' },
         ]
     };
@@ -272,7 +447,101 @@
         UpperA: "Superiores A", LowerA: "Inferiores A", UpperB: "Superiores B", LowerB: "Inferiores B"
     };
 
-    // FUNÇÃO MELHORADA: TOAST MESSAGE
+    // Objeto de mapeamento para cores de músculos para variáveis CSS (seguro)
+    const MUSCLE_CSS_VAR_MAP = {
+        'Peito': '--muscle-chest', 'Ombros': '--muscle-shoulders', 'Costas': '--muscle-back',
+        'Bíceps': '--muscle-biceps', 'Tríceps': '--muscle-triceps', 'Pernas': '--muscle-legs',
+        'Posteriores': '--muscle-hamstrings', 'Glúteos': '--muscle-glutes', 'Panturrilhas': '--muscle-calves'
+    };
+    
+    // Mapeamento de grupos musculares para tipo de treino
+    const MUSCLE_TO_TYPE = {
+        'Peito': 'upper', 'Ombros': 'upper', 'Costas': 'upper', 'Bíceps': 'upper', 'Tríceps': 'upper',
+        'Pernas': 'lower', 'Posteriores': 'lower', 'Glúteos': 'lower', 'Panturrilhas': 'lower'
+    };
+
+    // NOVO: Tabela de RIR para Porcentagem da 1RM (Base Científica)
+    const rirToPercentage = {
+        1: {0: 1.00, 1: 0.95, 2: 0.92, 3: 0.89, 4: 0.87, 5: 0.85},
+        2: {0: 0.97, 1: 0.93, 2: 0.90, 3: 0.88, 4: 0.86, 5: 0.84},
+        3: {0: 0.95, 1: 0.90, 2: 0.88, 3: 0.86, 4: 0.84, 5: 0.82},
+        4: {0: 0.92, 1: 0.88, 2: 0.86, 3: 0.84, 4: 0.82, 5: 0.80},
+        5: {0: 0.90, 1: 0.86, 2: 0.84, 3: 0.82, 4: 0.80, 5: 0.78},
+        6: {0: 0.88, 1: 0.84, 2: 0.82, 3: 0.80, 4: 0.78, 5: 0.76},
+        7: {0: 0.86, 1: 0.82, 2: 0.80, 3: 0.78, 4: 0.76, 5: 0.74},
+        8: {0: 0.84, 1: 0.80, 2: 0.78, 3: 0.76, 4: 0.74, 5: 0.72},
+        9: {0: 0.82, 1: 0.78, 2: 0.76, 3: 0.74, 4: 0.72, 5: 0.70},
+        10: {0: 0.80, 1: 0.76, 2: 0.74, 3: 0.72, 4: 0.70, 5: 0.68},
+        11: {0: 0.78, 1: 0.74, 2: 0.72, 3: 0.70, 4: 0.68, 5: 0.66},
+        12: {0: 0.76, 1: 0.72, 2: 0.70, 3: 0.68, 4: 0.66, 5: 0.64},
+        15: {0: 0.70, 1: 0.66, 2: 0.64, 3: 0.62, 4: 0.60, 5: 0.58},
+        20: {0: 0.60, 1: 0.58, 2: 0.56, 3: 0.54, 4: 0.52, 5: 0.50}
+    };
+
+    // Variáveis Globais de Gráfico
+    let evolutionChart;
+    let balanceChart; 
+    let recordsUpperChart; 
+    let recordsLowerChart; 
+    let progressorsChart; 
+    let weeklyVolumeChart; // NOVO: Gráfico de Volume Semanal
+    let currentEvolutionMode = 'exercise';
+    let currentEvolutionView = 'individual'; // NOVO: 'individual' ou 'weekly'
+    let currentRecordsMode = 'weight'; // 'weight' ou 'e1rm'
+    
+    // Base Chart Options para visual moderno e tema dinâmico
+    let BASE_CHART_OPTIONS = {};
+    
+    // Função para obter as cores dinâmicas do CSS
+    function getCssVariable(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#ccc'; 
+    }
+    
+    // Função para atualizar as opções base do gráfico com cores dinâmicas
+    function updateBaseChartOptions() {
+        const textColor = getCssVariable('--text-color');
+        const gridColor = getCssVariable('--chart-grid-color');
+        const borderColor = getCssVariable('--border-color');
+
+        BASE_CHART_OPTIONS = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { 
+                mode: 'index', 
+                intersect: false 
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: textColor,
+                        font: { size: 14 }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: getCssVariable('--secondary-color'),
+                    titleColor: getCssVariable('--accent-color'),
+                    bodyColor: textColor,
+                    borderColor: borderColor,
+                    borderWidth: 1,
+                    cornerRadius: 5
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: textColor,
+                        font: { size: 12 }
+                    },
+                    grid: {
+                        color: gridColor,
+                        borderColor: borderColor
+                    }
+                }
+            }
+        };
+    }
+    
+    // FUNÇÃO MELHORADA: TOAST MESSAGE 
     function showToast(message, type = 'info', duration = 3000) {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -281,17 +550,15 @@
 
         container.appendChild(toast);
         
-        // Exibir
         setTimeout(() => toast.classList.add('show'), 10);
 
-        // Esconder
         setTimeout(() => {
             toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 500); // Remover após a transição
+            setTimeout(() => toast.remove(), 500);
         }, duration);
     }
 
-    // LÓGICA PARA O MODO FOCO (Mantida)
+    // LÓGICA PARA O MODO FOCO 
     let focusOverlay;
     function createFocusOverlay() {
         if (document.getElementById('focus-overlay')) return;
@@ -318,7 +585,7 @@
 
 
     function getHistory() {
-        const history = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+        const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
         return history.map(workout => ({
             ...workout,
             date: new Date(workout.date) 
@@ -331,6 +598,21 @@
         return Math.round(totalTime / 60);
     }
 
+    function getExerciseInfo(name) {
+        for (const workoutId in workouts) {
+            const info = workouts[workoutId].find(ex => ex.name === name);
+            if (info) return info;
+        }
+        return null;
+    }
+
+    // NOVO: Função para calcular 1RM Estimado (Epley Formula)
+    function calculateE1RM(weight, reps) {
+        if (weight <= 0 || reps <= 0) return 0;
+        const e1rm = weight * (1 + reps / 30);
+        return parseFloat(e1rm.toFixed(2));
+    }
+    
     function getPersonalRecord(exerciseName) {
         const history = getHistory();
         let maxWeight = 0;
@@ -342,32 +624,502 @@
         }));
         return maxWeight;
     }
+    
+    function getLastWorkoutRpe(exerciseName) {
+        const history = getHistory();
+        for (let i = history.length - 1; i >= 0; i--) {
+            const workout = history[i];
+            const exercise = workout.exercises.find(ex => ex.name === exerciseName);
+            
+            if (exercise) {
+                const completedSets = exercise.sets.filter(s => s.rpe !== null);
+                if (completedSets.length > 0) {
+                    const sumRpe = completedSets.reduce((sum, s) => sum + s.rpe, 0);
+                    const avgRpe = sumRpe / completedSets.length;
+                    return avgRpe.toFixed(1); 
+                }
+            }
+        }
+        return null;
+    }
+    
+    function getMaxE1RM(exerciseName) {
+        const history = getHistory();
+        let maxE1RM = 0;
+        history.forEach(w => w.exercises.forEach(ex => {
+            if (ex.name === exerciseName) { 
+                ex.sets.forEach(set => {
+                    if (set.weight > 0 && set.reps > 0) {
+                        const currentE1RM = calculateE1RM(set.weight, set.reps);
+                        if (currentE1RM > maxE1RM) maxE1RM = currentE1RM;
+                    }
+                });
+            }
+        }));
+        return maxE1RM;
+    }
+    
+    // NOVO: Função para calcular a Carga Prevista (Prescribed Load)
+    function getPrescribedLoad(exerciseName) {
+        const maxE1RM = getMaxE1RM(exerciseName);
+        if (maxE1RM === 0) return null;
 
-    function getSuggestedWeight(exerciseName) {
-        const lastWeight = getPersonalRecord(exerciseName);
-        if (!lastWeight) return 'kg';
-        const suggestedIncrease = Math.max(lastWeight * 0.05, 2.5);
-        let suggestedWeight = lastWeight + suggestedIncrease;
-        suggestedWeight = Math.round(suggestedWeight * 2) / 2;
-        return `Sug: ${suggestedWeight}kg`;
+        const info = getExerciseInfo(exerciseName);
+        if (!info) return null;
+
+        const repsRange = info.reps.split('-').map(r => parseInt(r));
+        let targetReps;
+        if (repsRange.length === 2) {
+            targetReps = Math.round((repsRange[0] + repsRange[1]) / 2);
+        } else {
+            targetReps = parseInt(info.reps);
+        }
+        
+        const effectiveReps = Math.min(targetReps, 15); 
+        const targetRIR = 2; // RPE 8
+
+        let percentage = null;
+        const availableReps = Object.keys(rirToPercentage).map(r => parseInt(r));
+        let bestMatchReps = availableReps[0];
+        let minDiff = Math.abs(effectiveReps - bestMatchReps);
+        
+        availableReps.forEach(r => {
+            const diff = Math.abs(effectiveReps - r);
+            if (diff < minDiff) {
+                minDiff = diff;
+                bestMatchReps = r;
+            }
+        });
+
+        if (rirToPercentage[bestMatchReps] && rirToPercentage[bestMatchReps][targetRIR] !== undefined) {
+            percentage = rirToPercentage[bestMatchReps][targetRIR];
+        }
+
+        if (!percentage) return null;
+
+        let prescribedLoad = maxE1RM * percentage;
+        prescribedLoad = Math.round(prescribedLoad * 2) / 2; // Arredonda para 0.5kg mais próximo
+
+        if (prescribedLoad <= 0) return null;
+
+        return prescribedLoad.toFixed(1); 
+    }
+    
+    // ATUALIZADO: Função para obter TODOS os recordes pessoais (PRs) com tipo de músculo e E1RM
+    function getAllPersonalRecords() {
+        const history = getHistory();
+        const prs = {}; 
+
+        history.forEach(w => {
+            const workoutDate = new Date(w.date);
+            w.exercises.forEach(ex => {
+                const exInfo = getExerciseInfo(ex.name);
+                const muscleType = exInfo ? MUSCLE_TO_TYPE[exInfo.targetMuscle] : null;
+
+                if (muscleType) {
+                    let maxW = 0;
+                    let maxE1RM = 0;
+                    
+                    ex.sets.forEach(set => {
+                        const currentE1RM = calculateE1RM(set.weight, set.reps);
+                        
+                        if (currentE1RM > maxE1RM) { maxE1RM = currentE1RM; }
+                        if (set.weight > maxW) { maxW = set.weight; }
+                    });
+
+                    const existingPr = prs[ex.name];
+                    
+                    if (!existingPr) {
+                        prs[ex.name] = { 
+                            max_weight: maxW, max_e1rm: maxE1RM, date_raw: w.date,
+                            date: workoutDate.toLocaleDateString('pt-BR'), type: muscleType
+                        };
+                    } else {
+                        let shouldUpdate = false;
+                        
+                        if (maxW > existingPr.max_weight) { existingPr.max_weight = maxW; shouldUpdate = true; }
+                        if (maxE1RM > existingPr.max_e1rm) { existingPr.max_e1rm = maxE1RM; shouldUpdate = true; }
+                        
+                        if (maxW === existingPr.max_weight && workoutDate > new Date(existingPr.date_raw)) { shouldUpdate = true; }
+                        if (maxE1RM === existingPr.max_e1rm && workoutDate > new Date(existingPr.date_raw)) { shouldUpdate = true; }
+
+                        if (shouldUpdate) {
+                            existingPr.date_raw = w.date;
+                            existingPr.date = workoutDate.toLocaleDateString('pt-BR');
+                        }
+                    }
+                }
+            });
+        });
+
+        return Object.entries(prs)
+            .map(([name, data]) => ({ name, weight: data.max_weight, e1rm: data.max_e1rm, date: data.date, type: data.type }))
+            .sort((a, b) => b.e1rm - a.e1rm); 
+    }
+    
+    // NOVO: Função para calcular o aumento de E1RM nos últimos 60 dias
+    function getE1RMTrends() {
+        const history = getHistory();
+        const trends = {}; 
+        
+        const exerciseData = {};
+        history.forEach(w => w.exercises.forEach(ex => {
+            ex.sets.forEach(set => {
+                if (set.weight > 0 && set.reps > 0) {
+                    const e1rm = calculateE1RM(set.weight, set.reps);
+                    if (!exerciseData[ex.name]) exerciseData[ex.name] = [];
+                    // Adiciona o maior E1RM do treino para aquele exercício
+                    const currentMax = Math.max(0, ...(exerciseData[ex.name].length > 0 ? [exerciseData[ex.name].pop().e1rm] : [0]), e1rm);
+                    // Adiciona o maior E1RM do dia para evitar múltiplas entradas no mesmo dia
+                    exerciseData[ex.name].push({ date: new Date(w.date), e1rm: currentMax });
+                }
+            });
+        }));
+
+        const TREND_WINDOW_DAYS = 60; // 8 semanas
+        
+        for (const name in exerciseData) {
+            const data = exerciseData[name].sort((a, b) => a.date - b.date); 
+            if (data.length < 2) continue;
+
+            const latestEntry = data[data.length - 1];
+            
+            const latestDate = latestEntry.date;
+            const baselineCutoffDate = new Date(latestDate);
+            baselineCutoffDate.setDate(latestDate.getDate() - TREND_WINDOW_DAYS);
+
+            let baselineEntry = data[0]; 
+            
+            // Encontra a melhor linha de base: o último registro *antes* da janela de 60 dias
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].date < baselineCutoffDate) {
+                    baselineEntry = data[i];
+                } else {
+                    break;
+                }
+            }
+            
+            const latestE1RM = latestEntry.e1rm;
+            const baselineE1RM = baselineEntry.e1rm;
+            
+            if (latestE1RM > baselineE1RM && baselineE1RM > 0) {
+                const increase = latestE1RM - baselineE1RM;
+                const percentage = (increase / baselineE1RM) * 100;
+                
+                trends[name] = {
+                    latestE1RM: parseFloat(latestE1RM.toFixed(1)),
+                    baselineE1RM: parseFloat(baselineE1RM.toFixed(1)),
+                    increase: parseFloat(increase.toFixed(1)),
+                    percentage: parseFloat(percentage.toFixed(1)),
+                    // Usa a data do baseline para mostrar o período de progresso
+                    baselineDate: baselineEntry.date.toLocaleDateString('pt-BR') 
+                };
+            }
+        }
+        
+        return Object.entries(trends)
+            .map(([name, data]) => ({ name, ...data }))
+            .sort((a, b) => b.increase - a.increase); 
+    }
+    
+    // NOVO: Função para renderizar o gráfico de Maiores Progressos
+    function renderProgressorsChart() {
+        const progressors = getE1RMTrends();
+        const chartCanvas = document.getElementById('progressorsChart');
+
+        if (progressorsChart) progressorsChart.destroy();
+
+        if (progressors.length === 0) {
+            chartCanvas.style.display = 'none';
+            let msgElement = document.getElementById(`progressorsChart-nodata`);
+            if (!msgElement) {
+                msgElement = document.createElement('p');
+                msgElement.id = `progressorsChart-nodata`;
+                msgElement.style.cssText = 'text-align:center; color: var(--text-color); margin-top: 15px;';
+                chartCanvas.parentNode.insertBefore(msgElement, chartCanvas);
+            }
+            msgElement.textContent = `Nenhum progresso de E1RM registrado nos últimos 60 dias.`;
+            return;
+        }
+
+        let msgElement = document.getElementById(`progressorsChart-nodata`);
+        if (msgElement) msgElement.remove();
+
+        chartCanvas.style.display = 'block';
+
+        const top10 = progressors.slice(0, 10).reverse(); // Reverte para a barra maior ficar em cima
+        const labels = top10.map(p => p.name);
+        const data = top10.map(p => p.increase); // Plota o aumento (aumento absoluto)
+        
+        updateBaseChartOptions();
+        const progressColor = getCssVariable('--progress-color');
+        const textColor = getCssVariable('--text-color');
+        const gridColor = getCssVariable('--chart-grid-color');
+
+        const ctx = chartCanvas.getContext('2d');
+        
+        const chartOptions = JSON.parse(JSON.stringify(BASE_CHART_OPTIONS));
+        
+        chartOptions.plugins.legend.display = false;
+        chartOptions.indexAxis = 'y'; // Transforma em gráfico de barras horizontal
+
+        chartOptions.scales = {
+            x: {
+                ...chartOptions.scales.x,
+                position: 'bottom',
+                beginAtZero: true,
+                title: { 
+                    display: true, 
+                    text: 'Aumento Absoluto de E1RM (kg)', 
+                    color: progressColor 
+                },
+                grid: { 
+                    color: gridColor,
+                    borderColor: getCssVariable('--border-color')
+                }
+            },
+            y: { 
+                type: 'category', 
+                ticks: { 
+                    color: textColor 
+                },
+                grid: { drawOnChartArea: false } 
+            }
+        };
+        
+        const datasets = [{
+            label: 'Aumento de E1RM (kg)',
+            data: data,
+            backgroundColor: progressColor + 'CC', 
+            borderColor: progressColor,
+            borderWidth: 2,
+            borderRadius: 5,
+            hoverBackgroundColor: progressColor,
+        }];
+        
+        progressorsChart = new Chart(ctx, {
+            type: 'bar', 
+            data: { labels, datasets },
+            options: chartOptions
+        });
     }
 
-    // FUNÇÃO DE CRIAÇÃO DE EXERCÍCIO (MELHORADA COM REPS E CORES)
+    // ATUALIZADO: Função para renderizar a lista de PRs
+    function renderPRs() {
+        const prManager = document.getElementById('pr-manager');
+        const prs = getAllPersonalRecords();
+        prManager.innerHTML = ''; 
+
+        if (prs.length === 0) {
+            prManager.innerHTML = `<p style="text-align:center; color: var(--text-color); margin-top: 15px;">Nenhum Recorde Pessoal registrado ainda.</p>`;
+            return;
+        }
+
+        let html = '<h4 style="text-align:center; margin-top: 2rem; color: var(--text-color); border-top: 1px solid var(--border-color); padding-top: 1rem;">Lista Completa de Recordes</h4>';
+        html += '<div style="display: flex; justify-content: flex-start; gap: 20px; font-weight: bold; border-bottom: 2px solid var(--border-color); padding-bottom: 5px; margin-bottom: 5px;">'
+        html += '<div style="flex-basis: 35%;">Exercício</div>'
+        html += `<div style="flex-basis: 25%; text-align: right; color: var(--pr-color);">PR Peso</div>`
+        html += `<div style="flex-basis: 25%; text-align: right; color: var(--e1rm-color);">E1RM Máx</div>`
+        html += '</div>';
+
+        prs.forEach(pr => {
+            html += `
+                <div class="pr-item">
+                    <div class="pr-item-info">
+                        <strong>${pr.name}</strong>
+                        <div class="history-item-notes">
+                            (${pr.type === 'upper' ? 'Superiores' : 'Inferiores'}) - ${pr.date}
+                        </div>
+                    </div>
+                    <div class="pr-item-details">
+                        ${pr.weight} kg
+                    </div>
+                    <div class="pr-item-e1rm">
+                        ${pr.e1rm.toFixed(2)} kg
+                    </div>
+                </div>
+            `;
+        });
+
+        prManager.innerHTML = html;
+    }
+
+    // Função para alternar o tipo de dado do gráfico de recordes
+    function toggleRecordsChartMode(mode) {
+        currentRecordsMode = mode;
+        document.querySelectorAll('.chart-record-button').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.chart-record-button[data-mode="${mode}"]`).classList.add('active');
+        
+        renderRecordsChart('upper'); 
+        renderRecordsChart('lower');
+    }
+
+    // ATUALIZADO: Função para renderizar o gráfico de Recordes Pessoais por tipo
+    function renderRecordsChart(type) {
+        const allPrs = getAllPersonalRecords();
+        const filteredPrs = allPrs.filter(pr => pr.type === type)
+            .sort((a, b) => (currentRecordsMode === 'weight' ? b.weight - a.weight : b.e1rm - a.e1rm))
+            .slice(0, 10); 
+        
+        const chartId = type === 'upper' ? 'recordsUpperChart' : 'recordsLowerChart';
+        const chartCanvas = document.getElementById(chartId);
+        
+        const currentChart = type === 'upper' ? recordsUpperChart : recordsLowerChart;
+        if (currentChart) currentChart.destroy();
+
+        const dataKey = currentRecordsMode === 'weight' ? 'weight' : 'e1rm';
+        const unitLabel = currentRecordsMode === 'weight' ? 'Peso Máximo (kg)' : 'E1RM Máximo (kg)';
+        const titleMode = currentRecordsMode === 'weight' ? 'Peso Máximo' : 'E1RM Máximo';
+        const titleText = `${type === 'upper' ? 'Recordes de Superiores' : 'Recordes de Inferiores'} (${titleMode} Top 10)`;
+        
+        const titleElement = chartCanvas.previousElementSibling;
+        if (titleElement && titleElement.tagName === 'H4') {
+            titleElement.textContent = titleText;
+        }
+
+        if (filteredPrs.length === 0) {
+            chartCanvas.style.display = 'none';
+            let msgElement = document.getElementById(`${chartId}-nodata`);
+            if (!msgElement) {
+                msgElement = document.createElement('p');
+                msgElement.id = `${chartId}-nodata`;
+                msgElement.style.cssText = 'text-align:center; color: var(--text-color); margin-top: 15px;';
+                chartCanvas.parentNode.insertBefore(msgElement, chartCanvas);
+            }
+            msgElement.textContent = `Nenhum PR de ${type === 'upper' ? 'Superiores' : 'Inferiores'} registrado.`;
+            return;
+        }
+
+        let msgElement = document.getElementById(`${chartId}-nodata`);
+        if (msgElement) msgElement.remove();
+
+        chartCanvas.style.display = 'block';
+
+        const labels = filteredPrs.map(pr => pr.name);
+        const data = filteredPrs.map(pr => dataKey === 'e1rm' ? parseFloat(pr[dataKey].toFixed(2)) : pr[dataKey]);
+        
+        updateBaseChartOptions();
+        const typeColor = currentRecordsMode === 'weight' 
+            ? (type === 'upper' ? getCssVariable('--calendar-upper-color') : getCssVariable('--calendar-lower-color'))
+            : getCssVariable('--e1rm-color'); 
+        
+        const textColor = getCssVariable('--text-color');
+        const gridColor = getCssVariable('--chart-grid-color');
+
+        const ctx = chartCanvas.getContext('2d');
+        
+        const chartOptions = JSON.parse(JSON.stringify(BASE_CHART_OPTIONS));
+        
+        chartOptions.plugins.legend.display = false;
+
+        chartOptions.scales = {
+            x: {
+                ...chartOptions.scales.x,
+                ticks: { 
+                    color: textColor,
+                    font: { size: 12 },
+                    maxRotation: 45,
+                    minRotation: 45 
+                },
+                grid: { drawOnChartArea: false }
+            },
+            y: { 
+                type: 'linear', 
+                display: true, 
+                position: 'left', 
+                beginAtZero: false, 
+                suggestedMin: Math.floor(Math.min(...data) * 0.9 / 10) * 10,
+                title: { 
+                    display: true, 
+                    text: unitLabel, 
+                    color: typeColor 
+                },
+                ticks: { 
+                    color: textColor 
+                }, 
+                grid: { 
+                    color: gridColor,
+                    borderColor: getCssVariable('--border-color')
+                }
+            }
+        };
+
+        const datasets = [{
+            label: unitLabel,
+            data: data,
+            backgroundColor: typeColor + 'CC', 
+            borderColor: typeColor,
+            borderWidth: 2,
+            borderRadius: 5,
+            hoverBackgroundColor: typeColor,
+        }];
+        
+        const newChart = new Chart(ctx, {
+            type: 'bar', 
+            data: { labels, datasets },
+            options: chartOptions
+        });
+
+        if (type === 'upper') {
+            recordsUpperChart = newChart;
+        } else {
+            recordsLowerChart = newChart;
+        }
+    }
+
+
+    function getSuggestedWeight(exerciseName) {
+        const prescribedLoad = getPrescribedLoad(exerciseName);
+        if (prescribedLoad !== null) {
+            return `[${prescribedLoad} kg]`; 
+        }
+
+        const lastWeight = getPersonalRecord(exerciseName);
+        if (!lastWeight) return 'kg';
+        const suggestedIncrease = Math.max(lastWeight * 0.025, 1.25); 
+        let suggestedWeight = lastWeight + suggestedIncrease;
+        suggestedWeight = Math.round(suggestedWeight * 2) / 2;
+        
+        return `Sug: ${suggestedWeight}kg`; 
+    }
+
+    // ATUALIZADO: FUNÇÃO DE CRIAÇÃO DE EXERCÍCIO
     function createExerciseHTML(exercise) {
         const pr = getPersonalRecord(exercise.name);
-        const prBadge = pr > 0 ? `<span class="pr-badge">🏆 PR: ${pr}kg</span>` : '';
-        const placeholder = getSuggestedWeight(exercise.name);
+        const lastRpe = getLastWorkoutRpe(exercise.name);
         
-        // Define o valor inicial de reps como o limite superior ou o valor único
+        const prescribedLoad = getPrescribedLoad(exercise.name);
+        const placeholderText = getSuggestedWeight(exercise.name);
+        const isPrescribed = placeholderText.startsWith('[') && prescribedLoad;
+
+        const prBadge = pr > 0 ? `<span class="pr-badge">🏆 PR: ${pr}kg</span>` : '';
+        
         const defaultReps = exercise.reps.split('-').pop();
+        
+        const loadPrescription = isPrescribed 
+            ? `<span class="prescribed-load">Carga Prevista (RPE 8): ${prescribedLoad} kg</span>` 
+            : '';
+
+        let intensityBar = '';
+        if (lastRpe) {
+            const rir = (10 - parseFloat(lastRpe)).toFixed(1);
+            let barClass = '';
+            if (parseFloat(lastRpe) < 7) barClass = 'low';
+            if (parseFloat(lastRpe) > 9) barClass = 'high';
+
+            intensityBar = `<span class="intensity-bar ${barClass}">Último RPE: ${lastRpe} (RIR: ${rir})</span>`;
+        }
 
         let tableRows = '';
         for (let i = 1; i <= exercise.sets; i++) {
+            const currentPlaceholder = isPrescribed ? prescribedLoad : placeholderText.replace('Sug: ', '').replace('kg', '');
+            
             tableRows += `
                 <tr class="set-row">
                     <td>${i}</td>
-                    <td><input type="number" class="input-field weight-input" placeholder="${placeholder}" onblur="autoCompleteSet(this)"></td>
+                    <td><input type="number" class="input-field weight-input" placeholder="${currentPlaceholder}" onblur="autoCompleteSet(this)" min="0" step="0.5"></td>
                     <td><input type="number" class="input-field reps-input" value="${defaultReps}" onblur="autoCompleteSet(this)" min="1"></td>
+                    <td><input type="number" class="input-field rpe-input" placeholder="RPE" min="6" max="10" step="0.5" onkeyup="checkRpeRange(this)" onblur="autoCompleteSet(this)"></td>
                     <td><input type="checkbox" class="set-checkbox" onchange="toggleSetCompleted(this)"></td>
                 </tr>
             `;
@@ -379,6 +1131,8 @@
                     <div>
                         <h3 class="exercise-title">${exercise.name}${prBadge}</h3>
                         <p class="exercise-meta">${exercise.sets} séries x ${exercise.reps} reps (${exercise.targetMuscle})</p>
+                        ${loadPrescription} 
+                        ${intensityBar} 
                     </div>
                     <div>
                         <button class="focus-button" onclick="toggleFocus(this)">👁️</button>
@@ -394,6 +1148,7 @@
                             <th>Série</th>
                             <th>Peso (kg)</th>
                             <th>Reps</th>
+                            <th>RPE</th> 
                             <th>Feito ✔</th>
                         </tr>
                     </thead>
@@ -403,19 +1158,32 @@
         `;
     }
     
-    // FUNÇÃO MELHORADA: Autocompletar série ao sair dos campos de input
+    function checkRpeRange(input) {
+        const rpe = parseFloat(input.value);
+        if (rpe && (rpe < 7 || rpe > 9)) {
+            input.classList.add('warning');
+            input.title = "RPE fora da faixa ideal (7-9) para Hipertrofia.";
+        } else {
+            input.classList.remove('warning');
+            input.title = "";
+        }
+    }
+    
     function autoCompleteSet(input) {
+        if (input.classList.contains('rpe-input')) {
+            checkRpeRange(input);
+        }
+
         const row = input.closest('.set-row');
         const weightInput = row.querySelector('.weight-input');
         const repsInput = row.querySelector('.reps-input');
+        const rpeInput = row.querySelector('.rpe-input');
         const checkbox = row.querySelector('.set-checkbox');
-
-        // Se o peso e as reps forem preenchidos, marca o checkbox (Usabilidade)
-        if (weightInput.value.trim() !== '' && repsInput.value.trim() !== '') {
+        
+        if (weightInput.value.trim() !== '' && repsInput.value.trim() !== '' && rpeInput.value.trim() !== '') {
             checkbox.checked = true;
             toggleSetCompleted(checkbox);
         } else {
-            // Se o peso ou reps forem esvaziados, desmarca
             if (checkbox.checked) {
                 checkbox.checked = false;
                 toggleSetCompleted(checkbox);
@@ -426,7 +1194,533 @@
     function toggleSetCompleted(checkbox) { 
         checkbox.closest('.set-row').classList.toggle('completed', checkbox.checked); 
     }
+    
+    function getProcessedBalanceData() {
+        const history = getHistory();
+        const muscleVolume = {};
+        
+        const allMuscleGroups = [...new Set(Object.values(workouts).flat().map(ex => ex.targetMuscle))].filter(m => m);
+        allMuscleGroups.forEach(muscle => muscleVolume[muscle] = 0);
 
+        history.forEach(w => {
+            w.exercises.forEach(ex => {
+                const exInfo = getExerciseInfo(ex.name);
+                if (exInfo) {
+                    const muscle = exInfo.targetMuscle;
+                    if (muscle) {
+                        const volume = ex.sets.reduce((sum, set) => sum + (set.weight * set.reps), 0);
+                        muscleVolume[muscle] = (muscleVolume[muscle] || 0) + volume;
+                    }
+                }
+            });
+        });
+        
+        const muscleLabels = Object.keys(muscleVolume).filter(m => muscleVolume[m] > 0);
+        const volumeData = muscleLabels.map(m => muscleVolume[m]);
+        
+        const muscleColors = muscleLabels.map(muscle => {
+            const cssVar = MUSCLE_CSS_VAR_MAP[muscle];
+            return cssVar ? getCssVariable(cssVar) : '#ccc';
+        });
+
+        const sortedData = muscleLabels.map((label, index) => ({
+            label,
+            volume: volumeData[index],
+            color: muscleColors[index]
+        })).sort((a, b) => b.volume - a.volume);
+        
+        return {
+            labels: sortedData.map(d => d.label),
+            data: sortedData.map(d => d.volume),
+            colors: sortedData.map(d => d.color)
+        };
+    }
+    
+    function renderBalanceChart() {
+        const { labels, data, colors } = getProcessedBalanceData();
+        const chartCanvas = document.getElementById('balanceChart');
+
+        if (balanceChart) balanceChart.destroy();
+        
+        const chartContainer = document.querySelector('#balance-view');
+        let noDataMsg = document.getElementById('balance-no-data-msg');
+
+        if (labels.length === 0) {
+            chartCanvas.style.display = 'none';
+            if (!noDataMsg) {
+                 noDataMsg = document.createElement('p');
+                 noDataMsg.id = 'balance-no-data-msg';
+                 noDataMsg.style.cssText = 'text-align:center; color: var(--text-color); margin-top: 15px;';
+                 noDataMsg.textContent = 'Não há dados de volume registrados para calcular o balanço muscular.';
+                 chartContainer.appendChild(noDataMsg);
+            }
+            return;
+        }
+
+        if (noDataMsg) noDataMsg.remove();
+        chartCanvas.style.display = 'block';
+
+        updateBaseChartOptions();
+        const textColor = getCssVariable('--text-color');
+        const gridColor = getCssVariable('--chart-grid-color');
+        
+        const ctx = chartCanvas.getContext('2d');
+        
+        const balanceOptions = JSON.parse(JSON.stringify(BASE_CHART_OPTIONS));
+        balanceOptions.plugins.legend.display = false; 
+        
+        balanceOptions.scales = {
+            x: {
+                ...balanceOptions.scales.x,
+                ticks: { 
+                    color: textColor,
+                    font: { size: 12 },
+                    maxRotation: 45,
+                    minRotation: 45 
+                },
+                grid: { 
+                    drawOnChartArea: false, 
+                    borderColor: getCssVariable('--border-color')
+                }
+            },
+            y: { 
+                type: 'linear', 
+                display: true, 
+                position: 'left', 
+                ticks: { 
+                    color: textColor 
+                }, 
+                beginAtZero: true, 
+                title: { 
+                    display: true, 
+                    text: 'Volume Total (Kg)', 
+                    color: getCssVariable('--accent-color')
+                },
+                grid: { 
+                    color: gridColor,
+                    borderColor: getCssVariable('--border-color')
+                }
+            }
+        };
+        
+        const datasets = [{
+            label: 'Volume Total (Kg)',
+            data: data,
+            backgroundColor: colors.map(c => c + 'AA'), 
+            borderColor: colors,
+            borderWidth: 2,
+            borderRadius: 5, 
+            hoverBackgroundColor: colors,
+            minBarLength: 2 
+        }];
+
+        balanceChart = new Chart(ctx, {
+            type: 'bar', 
+            data: { labels, datasets },
+            options: balanceOptions
+        });
+    }
+
+    // NOVO: Função para obter a Semana do Ano
+    function getWeekNumber(d) {
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        return `${d.getUTCFullYear()}-W${weekNo}`;
+    }
+
+    // NOVO: Função para obter os dados de volume semanal
+    function getWeeklyVolumeData() {
+        const history = getHistory();
+        const selPeriod = document.getElementById('periodSelector').value;
+        const allMuscleGroups = [...new Set(Object.values(workouts).flat().map(ex => ex.targetMuscle))].filter(m => m);
+        
+        const cutoff = new Date();
+        if (selPeriod !== 'all') {
+            cutoff.setDate(cutoff.getDate() - parseInt(selPeriod));
+        } else {
+            cutoff.setFullYear(cutoff.getFullYear() - 100);
+        }
+
+        const weeklyVolume = {}; // { '2025-W42': { Peito: 5000, Costas: 8000, ... } }
+
+        history.filter(w => w.date >= cutoff).forEach(w => {
+            const weekKey = getWeekNumber(w.date);
+            
+            if (!weeklyVolume[weekKey]) {
+                weeklyVolume[weekKey] = {};
+                allMuscleGroups.forEach(m => weeklyVolume[weekKey][m] = 0);
+            }
+
+            w.exercises.forEach(ex => {
+                const exInfo = getExerciseInfo(ex.name);
+                if (exInfo) {
+                    const muscle = exInfo.targetMuscle;
+                    if (muscle) {
+                        const volume = ex.sets.reduce((sum, set) => sum + (set.weight * set.reps), 0);
+                        weeklyVolume[weekKey][muscle] += volume;
+                    }
+                }
+            });
+        });
+
+        const sortedWeeks = Object.keys(weeklyVolume).sort();
+        const labels = sortedWeeks.map(key => key.split('-W')[1]); // Exibe apenas o número da semana
+
+        const datasets = allMuscleGroups.map(muscle => {
+            const cssVar = MUSCLE_CSS_VAR_MAP[muscle];
+            const color = cssVar ? getCssVariable(cssVar) : '#ccc';
+            
+            const data = sortedWeeks.map(weekKey => weeklyVolume[weekKey][muscle]);
+
+            return {
+                label: muscle,
+                data: data,
+                borderColor: color,
+                backgroundColor: color + '33', // 20% de opacidade para a área
+                fill: true,
+                tension: 0.4,
+                hidden: false, // Começa visível
+                pointRadius: 3 
+            };
+        });
+        
+        return { labels, datasets };
+    }
+    
+    // NOVO: Função para renderizar o gráfico de Volume Semanal
+    function renderWeeklyVolumeChart() {
+        const { labels, datasets } = getWeeklyVolumeData();
+        const chartCanvas = document.getElementById('weeklyVolumeChart');
+        
+        const container = document.getElementById('weekly-volume-container');
+        let noDataMsg = document.getElementById('weekly-volume-no-data');
+        
+        if (weeklyVolumeChart) weeklyVolumeChart.destroy();
+        
+        if (labels.length === 0) {
+            chartCanvas.style.display = 'none';
+            if (!noDataMsg) {
+                noDataMsg = document.createElement('p');
+                noDataMsg.id = 'weekly-volume-no-data';
+                noDataMsg.style.cssText = 'text-align:center; color: var(--text-color); margin-top: 15px;';
+                noDataMsg.textContent = 'Não há dados suficientes para calcular o volume semanal no período selecionado.';
+                container.appendChild(noDataMsg);
+            }
+            return;
+        }
+
+        if (noDataMsg) noDataMsg.remove();
+        chartCanvas.style.display = 'block';
+
+        updateBaseChartOptions();
+        const textColor = getCssVariable('--text-color');
+        const gridColor = getCssVariable('--chart-grid-color');
+        
+        const chartOptions = JSON.parse(JSON.stringify(BASE_CHART_OPTIONS));
+        chartOptions.plugins.legend.display = true;
+        
+        chartOptions.scales = {
+            x: {
+                ...chartOptions.scales.x,
+                title: { 
+                    display: true, 
+                    text: 'Número da Semana', 
+                    color: getCssVariable('--accent-color') 
+                },
+                ticks: { 
+                    color: textColor 
+                },
+                grid: { 
+                    color: gridColor,
+                    borderColor: getCssVariable('--border-color')
+                }
+            },
+            y: { 
+                type: 'linear', 
+                display: true, 
+                position: 'left', 
+                ticks: { 
+                    color: textColor 
+                }, 
+                beginAtZero: true, 
+                title: { 
+                    display: true, 
+                    text: 'Volume Semanal (Kg)', 
+                    color: getCssVariable('--volume-line-color')
+                },
+                grid: { 
+                    color: gridColor,
+                    borderColor: getCssVariable('--border-color')
+                }
+            }
+        };
+
+        const ctx = chartCanvas.getContext('2d');
+        weeklyVolumeChart = new Chart(ctx, {
+            type: 'line', 
+            data: { labels, datasets },
+            options: chartOptions
+        });
+    }
+
+    function toggleEvolutionView(view) {
+        currentEvolutionView = view;
+        
+        document.querySelectorAll('.evolution-mode-button').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.evolution-mode-button[data-view="${view}"]`).classList.add('active');
+
+        const individualView = document.getElementById('individual-evolution-controls');
+        const weeklyView = document.getElementById('weekly-volume-container');
+        const evolutionChartCanvas = document.getElementById('evolutionChart');
+        const weeklyVolumeChartCanvas = document.getElementById('weeklyVolumeChart');
+        const title = document.getElementById('evolution-title');
+
+        if (view === 'individual') {
+            individualView.style.display = 'block';
+            weeklyView.style.display = 'none';
+            evolutionChartCanvas.style.display = 'block';
+            weeklyVolumeChartCanvas.style.display = 'none';
+            title.textContent = 'Evolução Individual (Volume e Carga)';
+            renderEvolutionChart();
+        } else {
+            individualView.style.display = 'none';
+            weeklyView.style.display = 'block';
+            evolutionChartCanvas.style.display = 'none';
+            weeklyVolumeChartCanvas.style.display = 'block';
+            title.textContent = 'Análise de Volume Semanal (MV)';
+            renderWeeklyVolumeChart();
+        }
+    }
+
+    function getProcessedChartData() {
+        const history = getHistory();
+        const selPeriod = document.getElementById('periodSelector').value;
+        const isMuscleMode = currentEvolutionMode === 'muscle';
+        const selValue = isMuscleMode 
+            ? document.getElementById('muscleGroupSelector').value 
+            : document.getElementById('exerciseSelector').value;
+
+        if (!selValue || history.length === 0) return { labels: [], volData: [], weightData: [], selValue };
+
+        const cutoff = new Date();
+        if (selPeriod !== 'all') {
+            cutoff.setDate(cutoff.getDate() - parseInt(selPeriod));
+        } else {
+            cutoff.setFullYear(cutoff.getFullYear() - 100);
+        }
+
+        const filteredHistory = history.filter(w => w.date >= cutoff);
+        
+        if (filteredHistory.length === 0) return { labels: [], volData: [], weightData: [], selValue };
+
+        const dailyData = {};
+
+        filteredHistory.forEach(w => {
+            const dateStr = w.date.toLocaleDateString('pt-BR');
+            
+            if (!dailyData[dateStr]) {
+                dailyData[dateStr] = { totalVolume: 0, maxWeights: [] };
+            }
+
+            w.exercises.forEach(ex => {
+                const exInfo = getExerciseInfo(ex.name);
+                const isRelevant = isMuscleMode 
+                    ? (exInfo && exInfo.targetMuscle === selValue) 
+                    : (ex.name === selValue);
+                
+                if (isRelevant) {
+                    const volume = ex.sets.reduce((sum, set) => sum + (set.weight * set.reps), 0);
+                    const maxW = Math.max(0, ...ex.sets.map(set => set.weight));
+                    
+                    dailyData[dateStr].totalVolume += volume; 
+                    if (maxW > 0) dailyData[dateStr].maxWeights.push(maxW); 
+                }
+            });
+        });
+
+        const sortedDates = Object.keys(dailyData).filter(date => dailyData[date].totalVolume > 0).sort((a, b) => {
+            const parseDate = (dateStr) => {
+                const [day, month, year] = dateStr.split('/');
+                return new Date(year, month - 1, day);
+            };
+            return parseDate(a) - parseDate(b);
+        });
+        
+        const labels = sortedDates;
+        const volData = sortedDates.map(date => dailyData[date].totalVolume);
+        const weightData = sortedDates.map(date => Math.max(0, ...dailyData[date].maxWeights)); 
+        
+        return { labels, volData, weightData, selValue };
+    }
+
+
+    function renderEvolutionChart() {
+        if (currentEvolutionView === 'weekly') return; // Nao renderiza se estiver no modo semanal
+        
+        const { labels, volData, weightData, selValue } = getProcessedChartData();
+        const chartType = document.getElementById('chartTypeSelector').value;
+        const isMuscleMode = currentEvolutionMode === 'muscle';
+        
+        const chartContainer = document.getElementById('individual-evolution-controls').parentNode; // Contêiner pai
+        
+        if (evolutionChart) evolutionChart.destroy();
+        
+        let chartCanvas = document.getElementById('evolutionChart');
+        if (!chartCanvas || chartCanvas.tagName !== 'CANVAS') {
+            const oldElement = chartCanvas;
+            chartCanvas = document.createElement('canvas');
+            chartCanvas.id = 'evolutionChart';
+            if (oldElement) oldElement.replaceWith(chartCanvas);
+            else {
+                chartContainer.appendChild(chartCanvas);
+            }
+        }
+        
+        if (labels.length === 0) {
+            chartCanvas.style.display = 'none';
+            if (!document.getElementById('no-data-msg')) {
+                 const msg = document.createElement('p');
+                 msg.id = 'no-data-msg';
+                 msg.style.cssText = 'text-align:center; color: var(--text-color); margin-top: 15px;';
+                 msg.textContent = 'Não há dados neste período para a seleção. Tente mudar o exercício/músculo ou o período.';
+                 chartContainer.appendChild(msg);
+            }
+            return;
+        }
+
+        const noDataMsg = document.getElementById('no-data-msg');
+        if (noDataMsg) noDataMsg.remove();
+        chartCanvas.style.display = 'block';
+
+        const ctx = chartCanvas.getContext('2d');
+        
+        updateBaseChartOptions();
+
+        let volumeColor;
+        if (isMuscleMode) {
+            const cssVar = MUSCLE_CSS_VAR_MAP[selValue];
+            volumeColor = cssVar ? getCssVariable(cssVar) : getCssVariable('--accent-color');
+        } else {
+            volumeColor = getCssVariable('--accent-color');
+        }
+        
+        const VOLUME_COLOR = volumeColor;
+        const WEIGHT_COLOR = getCssVariable('--pr-color');
+        const textColor = getCssVariable('--text-color');
+        const gridColor = getCssVariable('--chart-grid-color');
+        
+        const chartOptions = JSON.parse(JSON.stringify(BASE_CHART_OPTIONS));
+        
+        chartOptions.scales = {
+            x: {
+                ...chartOptions.scales.x,
+                ticks: { color: textColor },
+                grid: { 
+                    color: gridColor,
+                    borderColor: getCssVariable('--border-color')
+                }
+            },
+            yVolume: { 
+                type: 'linear', 
+                display: true, 
+                position: 'left', 
+                ticks: { color: VOLUME_COLOR }, 
+                beginAtZero: true, 
+                title: { 
+                    display: true, 
+                    text: 'Volume Total (Kg)', 
+                    color: VOLUME_COLOR
+                },
+                grid: { 
+                    color: gridColor,
+                    borderColor: getCssVariable('--border-color')
+                }
+            },
+            yWeight: { 
+                type: 'linear', 
+                display: true, 
+                position: 'right', 
+                ticks: { color: WEIGHT_COLOR }, 
+                beginAtZero: true, 
+                title: { 
+                    display: true, 
+                    text: 'Carga Máxima (Kg)', 
+                    color: WEIGHT_COLOR
+                }, 
+                grid: { 
+                    drawOnChartArea: false 
+                } 
+            }
+        };
+        
+        const datasets = [
+            { 
+                label: `Volume Total (Kg)`, 
+                data: volData, 
+                borderColor: VOLUME_COLOR, 
+                backgroundColor: chartType === 'bar' ? VOLUME_COLOR.replace(')', ', 0.7)') : 'transparent', 
+                yAxisID: 'yVolume',
+                tension: 0.3, 
+                pointRadius: chartType === 'line' ? 4 : 0 
+            },
+            { 
+                label: `Carga Máxima (Kg)`, 
+                data: weightData, 
+                borderColor: WEIGHT_COLOR, 
+                backgroundColor: chartType === 'bar' ? WEIGHT_COLOR.replace(')', ', 0.7)') : 'transparent',
+                yAxisID: 'yWeight',
+                tension: 0.3,
+                pointRadius: chartType === 'line' ? 4 : 0 
+            }
+        ];
+
+        evolutionChart = new Chart(ctx, {
+            type: chartType, 
+            data: { labels, datasets },
+            options: chartOptions
+        });
+    }
+
+    function updateEvolutionModeButtons(mode) {
+        currentEvolutionMode = mode;
+        
+        document.querySelectorAll('#individual-evolution-controls .chart-mode-button').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`#individual-evolution-controls .chart-mode-button[data-mode="${mode}"]`).classList.add('active');
+        
+        document.getElementById('exercise-selectors').style.display = mode === 'exercise' ? 'flex' : 'none';
+        document.getElementById('muscle-selectors').style.display = mode === 'muscle' ? 'flex' : 'none';
+        
+        renderEvolutionChart(); 
+    }
+
+    function renderEvolutionSelectors() {
+        const allExercises = [...new Set(Object.values(workouts).flat().map(ex => ex.name))].sort();
+        const exerciseSelector = document.getElementById('exerciseSelector');
+        exerciseSelector.innerHTML = allExercises.map(name => `<option value="${name}">${name}</option>`).join('');
+        
+        const allMuscleGroups = [...new Set(Object.values(workouts).flat().map(ex => ex.targetMuscle))].filter(m => m).sort();
+        const muscleGroupSelector = document.getElementById('muscleGroupSelector');
+        muscleGroupSelector.innerHTML = allMuscleGroups.map(muscle => `<option value="${muscle}">${muscle}</option>`).join('');
+
+        if (!exerciseSelector.onchange) {
+            const renderFn = () => {
+                 if (currentEvolutionView === 'individual') renderEvolutionChart();
+                 else renderWeeklyVolumeChart();
+            };
+
+            exerciseSelector.onchange = renderFn;
+            document.getElementById('periodSelector').onchange = renderFn;
+            document.getElementById('chartTypeSelector').onchange = renderFn;
+            muscleGroupSelector.onchange = renderFn;
+        }
+        
+        toggleEvolutionView(currentEvolutionView);
+        updateEvolutionModeButtons(currentEvolutionMode);
+    }
+    
+    // ATUALIZADO: Funções de renderização de treinos e modal (Adiciona novo gráfico de volume semanal)
     function renderWorkouts() {
         const history = getHistory();
         for (const workoutId in workouts) {
@@ -448,660 +1742,400 @@
             container.innerHTML = html;
         }
         
-        // Estrutura do Modal Atualizada com a nova seção de Evolução por Grupo Muscular
-        document.getElementById('chartModal').innerHTML = `<div class="modal-content"><span class="close-button" onclick="closeChartModal()">&times;</span><div class="modal-tabs"><button class="modal-tab-button active" onclick="showModalView('evolution')">Evolução</button><button class="modal-tab-button" onclick="showModalView('balance')">Balanço</button><button class="modal-tab-button" onclick="showModalView('consistency')">Consistência</button><button class="modal-tab-button" onclick="showModalView('records')">Recordes</button><button class="modal-tab-button" onclick="showModalView('history')">Histórico</button></div><div id="evolution-view" class="modal-view active"><h3 style="text-align:center;">Evolução por Exercício</h3><div class="chart-controls"><select id="exerciseSelector"></select><select id="periodSelector"><option value="30">1 Mês</option><option value="90">3 Meses</option><option value="180">6 Meses</option><option value="365">1 Ano</option></select><select id="chartTypeSelector"><option value="bar">Barras</option><option value="line">Linhas</option></select></div><canvas id="evolutionChart"></canvas><h3 style="text-align:center; margin-top: 2rem;">Evolução por Grupo Muscular</h3><div class="chart-controls"><select id="muscleGroupSelector"></select><select id="musclePeriodSelector"><option value="30">1 Mês</option><option value="90">3 Meses</option><option value="180">6 Meses</option><option value="365">1 Ano</option></select><select id="muscleChartTypeSelector"><option value="bar">Barras</option><option value="line">Linhas</option></select></div><canvas id="muscleEvolutionChart"></canvas></div><div id="balance-view" class="modal-view"><h3 style="text-align:center;">Balanço Muscular (Volume Total)</h3><canvas id="balanceChart"></canvas></div><div id="consistency-view" class="modal-view"><h3 style="text-align:center;">Frequência de Treinos</h3><div id="consistency-calendar"></div></div><div id="records-view" class="modal-view"><div id="pr-manager"></div></div><div id="history-view" class="modal-view"><div id="history-manager"></div></div></div>`;
-    }
+        // Estrutura do Modal
+        document.getElementById('chartModal').innerHTML = `<div class="modal-content">
+            <span class="close-button" onclick="closeChartModal()">&times;</span>
+            <div class="modal-tabs">
+                <button class="modal-tab-button active" onclick="showModalView('evolution')">Evolução</button>
+                <button class="modal-tab-button" onclick="showModalView('balance')">Balanço</button>
+                <button class="modal-tab-button" onclick="showModalView('consistency')">Consistência</button>
+                <button class="modal-tab-button" onclick="showModalView('records')">Recordes</button>
+                <button class="modal-tab-button" onclick="showModalView('history')">Histórico</button>
+            </div>
+            
+            <div id="evolution-view" class="modal-view active">
+                <h3 id="evolution-title" style="text-align:center;">Evolução</h3>
+                
+                <div id="evolutionModeSelector">
+                    <button class="evolution-mode-button active" data-view="individual" onclick="toggleEvolutionView('individual')">Individual</button>
+                    <button class="evolution-mode-button" data-view="weekly" onclick="toggleEvolutionView('weekly')">Volume Semanal (MV)</button>
+                </div>
 
-    // FUNÇÃO MELHORADA: fillFromLastWorkout usando Toast
-    function fillFromLastWorkout(workoutId) {
-        const history = getHistory();
-        const lastWorkout = history.slice().reverse().find(w => w.workoutId === workoutId);
-        if (!lastWorkout) {
-            showToast(`Nenhum treino anterior do tipo "${WORKOUT_NAMES[workoutId] || workoutId}" foi encontrado.`, 'warning');
+                <div id="individual-evolution-controls">
+                    <div class="chart-mode-selector">
+                        <button class="chart-mode-button active" data-mode="exercise" onclick="updateEvolutionModeButtons('exercise')">Por Exercício</button>
+                        <button class="chart-mode-button" data-mode="muscle" onclick="updateEvolutionModeButtons('muscle')">Por Músculo</button>
+                    </div>
+
+                    <div class="chart-controls">
+                        <div id="exercise-selectors" class="chart-select-group">
+                            <select id="exerciseSelector"></select>
+                        </div>
+                        <div id="muscle-selectors" class="chart-select-group" style="display: none;">
+                            <select id="muscleGroupSelector"></select>
+                        </div>
+
+                        <div class="chart-select-group">
+                            <select id="periodSelector">
+                                <option value="30">1 Mês</option>
+                                <option value="90">3 Meses</option>
+                                <option value="180">6 Meses</option>
+                                <option value="365">1 Ano</option>
+                                <option value="all">Todo Período</option>
+                            </select>
+                            <select id="chartTypeSelector">
+                                <option value="line">Linhas</option>
+                                <option value="bar">Barras</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="weekly-volume-container" style="display: none;">
+                    <div class="chart-controls" style="display: block;">
+                         <label for="periodSelectorWeekly" style="font-weight: bold; margin-right: 1rem;">Período:</label>
+                         <select id="periodSelectorWeekly" onchange="renderWeeklyVolumeChart()">
+                            <option value="60">Últimas 8 Semanas</option>
+                            <option value="90">Últimas 12 Semanas</option>
+                            <option value="180">Últimos 6 Meses</option>
+                            <option value="all">Todo Período</option>
+                         </select>
+                    </div>
+                    <canvas id="weeklyVolumeChart" style="max-height: 350px; width: 100%;"></canvas>
+                </div>
+                
+                <canvas id="evolutionChart"></canvas>
+            </div>
+            
+            <div id="balance-view" class="modal-view">
+                <h3 style="text-align:center;">Balanço Muscular (Volume Total)</h3>
+                <canvas id="balanceChart"></canvas>
+            </div>
+            <div id="consistency-view" class="modal-view">
+                <h3 style="text-align:center;">Frequência de Treinos</h3>
+                <div id="calendar-header-controls" style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 1rem;">
+                    <button class="secondary-button" onclick="changeCalendarMonth(-1)">&#9664; Anterior</button>
+                    <h4 id="current-month-display" style="margin: 0;">Mês/Ano</h4>
+                    <button class="secondary-button" onclick="changeCalendarMonth(1)">Próximo &#9654;</button>
+                </div>
+                <div id="consistency-calendar"></div>
+            </div>
+            <div id="records-view" class="modal-view">
+                <h3 style="text-align:center;">Gráficos de Recordes Pessoais (PRs e E1RM)</h3>
+                
+                <div class="chart-mode-selector" style="margin-bottom: 2rem;">
+                    <button class="chart-record-button active" data-mode="weight" onclick="toggleRecordsChartMode('weight')">PR - Peso Máximo</button>
+                    <button class="chart-record-button" data-mode="e1rm" onclick="toggleRecordsChartMode('e1rm')">PR - E1RM Máximo</button>
+                </div>
+
+                <h4 style="text-align:center; color: var(--calendar-upper-color);">Recordes de Superiores (Top 10)</h4>
+                <div style="margin-bottom: 0.5rem; text-align: center;">
+                    <canvas id="recordsUpperChart" style="max-height: 350px; width: 100%;"></canvas>
+                </div>
+
+                <h4 style="text-align:center; color: var(--calendar-lower-color);">Recordes de Inferiores (Top 10)</h4>
+                <div style="margin-bottom: 1.5rem; text-align: center;">
+                    <canvas id="recordsLowerChart" style="max-height: 350px; width: 100%;"></canvas>
+                </div>
+                
+                <h4 style="text-align:center; color: var(--progress-color); border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem;">💪 Maiores Progressos de E1RM (Últimos 60 dias)</h4>
+                <div style="margin-bottom: 1.5rem; text-align: center;">
+                    <canvas id="progressorsChart" style="max-height: 350px; width: 100%;"></canvas>
+                </div>
+
+                <div id="pr-manager"></div>
+            </div>
+            <div id="history-view" class="modal-view">
+                <div class="history-manager-header">
+                    <h3>Histórico Completo</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="data-io-button export-button" onclick="exportHistory()">Exportar</button>
+                        <button class="data-io-button import-button" onclick="document.getElementById('import-file-input').click()">Importar</button>
+                    </div>
+                </div>
+                <div id="history-manager"></div>
+            </div>
+        </div>`;
+        
+        renderEvolutionSelectors(); 
+    } 
+    
+    function renderHistory() {
+        const historyManager = document.getElementById('history-manager');
+        const history = getHistory().reverse(); 
+        historyManager.innerHTML = '';
+
+        if (history.length === 0) {
+            historyManager.innerHTML = `<p style="text-align:center; color: var(--text-color); margin-top: 15px;">Nenhum treino registrado no histórico.</p>`;
             return;
         }
 
-        const workoutContainer = document.getElementById(`workout-${workoutId}`);
-        lastWorkout.exercises.forEach(ex => {
-            const card = workoutContainer.querySelector(`.exercise-card[data-exercise-name="${ex.name}"]`);
-            if (card) {
-                const rows = card.querySelectorAll('.set-row');
-                ex.sets.forEach((set, index) => {
-                    const row = rows[index];
-                    if (row) {
-                        row.querySelector('.weight-input').value = set.weight;
-                        row.querySelector('.reps-input').value = set.reps; // Preenche as reps
-                        // Auto-marca a série
-                        const checkbox = row.querySelector('.set-checkbox');
-                        checkbox.checked = true;
-                        toggleSetCompleted(checkbox);
-                    }
-                });
-            }
-        });
-        showToast('Pesos e repetições preenchidos com base no último treino.', 'success');
-    }
-
-    function showWorkout(id) {
-        document.querySelectorAll('.workout-plan').forEach(p => p.classList.remove('active'));
-        document.getElementById(`workout-${id}`).classList.add('active');
-        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-        document.querySelector(`.tab-button[onclick="showWorkout('${id}')"]`).classList.add('active');
-    }
-
-    let timerInterval;
-    const notificationSound = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU'+Array(1e3).join('12121212'));
-
-    function startTimer(button, duration) {
-        if (button.classList.contains('timing')) return;
-        button.classList.add('timing'); 
-        let timeLeft = duration;
-        
-        const originalText = 'Iniciar Descanso';
-        const restInfo = button.nextElementSibling; // O div.timer-rest-info
-
-        timerInterval = setInterval(() => {
-            timeLeft--; 
-            const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
-            button.textContent = `Descansando... ${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        let html = '';
+        history.forEach((w, index) => {
+            const workoutName = WORKOUT_NAMES[w.workoutId] || w.workoutId;
+            const totalVolume = w.exercises.reduce((sum, ex) => 
+                sum + ex.sets.reduce((exSum, set) => exSum + (set.weight * set.reps), 0), 0);
             
-            if (timeLeft <= 0) {
-                clearInterval(timerInterval); 
-                button.classList.remove('timing');
-                button.textContent = originalText;
-                notificationSound.play(); 
-                if (navigator.vibrate) navigator.vibrate(200);
-                showToast('Descanso finalizado! Próxima série.', 'info', 5000);
-            }
-        }, 1000);
+            const originalIndex = getHistory().length - 1 - index; 
+
+            html += `
+                <div class="history-item">
+                    <div class="history-item-info">
+                        <strong>${workoutName}</strong> - ${new Date(w.date).toLocaleDateString('pt-BR')}
+                        <div class="history-item-details">
+                            Volume Total: ${totalVolume.toFixed(2)} kg
+                        </div>
+                        ${w.notes ? `<div class="history-item-notes">Notas: ${w.notes}</div>` : ''}
+                    </div>
+                    <button class="delete-btn" onclick="deleteHistoryItem(${originalIndex})">🗑️</button>
+                </div>
+            `;
+        });
+
+        historyManager.innerHTML = html;
+    }
+
+    function deleteHistoryItem(originalIndex) {
+        if (confirm("Tem certeza que deseja deletar este treino do histórico? Esta ação é irreversível.")) {
+            const history = getHistory(); 
+            history.splice(originalIndex, 1); 
+            
+            localStorage.setItem('workoutHistory', JSON.stringify(history));
+            
+            showToast('Treino removido do histórico.', 'success');
+            renderHistory(); 
+            renderWorkouts(); 
+        }
     }
     
-    // FUNÇÃO MELHORADA: saveWorkout (usa Reps e Toast)
-    function saveWorkout(workoutId) {
-        const notes = document.getElementById(`notes-${workoutId}`).value;
-        const workoutData = { date: new Date().toISOString(), workoutId: workoutId, exercises: [], notes: notes };
-        const container = document.getElementById(`workout-${workoutId}`);
-        let newPrs = [];
-        container.querySelectorAll('.exercise-card').forEach(card => {
-            const name = card.dataset.exerciseName;
+    function fillFromLastWorkout(workoutId) { 
+        const history = getHistory(); 
+        const lastWorkout = history.slice().reverse().find(w => w.workoutId === workoutId); 
+        if (!lastWorkout) { 
+            showToast(`Nenhum treino anterior do tipo "${WORKOUT_NAMES[workoutId] || workoutId}" foi encontrado.`, 'warning'); 
+            return; 
+        } 
+        const workoutContainer = document.getElementById(`workout-${workoutId}`); 
+        lastWorkout.exercises.forEach(ex => { 
+            const card = workoutContainer.querySelector(`.exercise-card[data-exercise-name="${ex.name}"]`); 
+            if (card) { 
+                const rows = card.querySelectorAll('.set-row'); 
+                ex.sets.forEach((set, index) => { 
+                    const row = rows[index]; 
+                    if (row) { 
+                        row.querySelector('.weight-input').value = set.weight; 
+                        row.querySelector('.reps-input').value = set.reps; 
+                        
+                        const rpeInput = row.querySelector('.rpe-input');
+                        if (rpeInput && set.rpe) {
+                            rpeInput.value = set.rpe;
+                            checkRpeRange(rpeInput);
+                        }
+                        
+                        const checkbox = row.querySelector('.set-checkbox'); 
+                        checkbox.checked = true; 
+                        toggleSetCompleted(checkbox); 
+                    } 
+                }); 
+            } 
+        }); 
+        showToast('Pesos, repetições e RPE preenchidos com base no último treino.', 'success'); 
+    } 
+
+    function showWorkout(id) { 
+        document.querySelectorAll('.workout-plan').forEach(p => p.classList.remove('active')); 
+        document.getElementById(`workout-${id}`).classList.add('active'); 
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active')); 
+        document.querySelector(`.tab-button[onclick="showWorkout('${id}')"]`).classList.add('active'); 
+    } 
+    
+    let timerInterval; 
+    const notificationSound = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU'+Array(1e3).join('12121212')); 
+    
+    function startTimer(button, duration) { 
+        if (button.classList.contains('timing')) return; 
+        button.classList.add('timing'); 
+        let timeLeft = duration; 
+        const originalText = 'Iniciar Descanso'; 
+        
+        clearInterval(timerInterval); 
+        
+        timerInterval = setInterval(() => { 
+            timeLeft--; 
+            const m = Math.floor(timeLeft / 60), s = timeLeft % 60; 
+            button.textContent = `Descansando... ${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`; 
+            
+            if (timeLeft <= 0) { 
+                clearInterval(timerInterval); 
+                button.classList.remove('timing'); 
+                button.textContent = originalText; 
+                notificationSound.play(); 
+                if (navigator.vibrate) navigator.vibrate(200); 
+                showToast('Descanso finalizado! Próxima série.', 'info', 5000); 
+            } 
+        }, 1000); 
+    } 
+
+    function saveWorkout(workoutId) { 
+        const notes = document.getElementById(`notes-${workoutId}`).value; 
+        const workoutData = { 
+            date: new Date().toISOString(), 
+            workoutId: workoutId, 
+            exercises: [], 
+            notes: notes 
+        }; 
+        const container = document.getElementById(`workout-${workoutId}`); 
+        let newPrs = []; 
+        let hasInvalidRpe = false;
+        
+        container.querySelectorAll('.exercise-card').forEach(card => { 
+            const name = card.dataset.exerciseName; 
             const sets = []; 
-            let maxWeightInWorkout = 0;
+            let maxWeightInWorkout = 0; 
             
-            card.querySelectorAll('.set-row').forEach(row => {
-                const isChecked = row.querySelector('.set-checkbox').checked;
-                const weightInput = row.querySelector('.weight-input').value;
-                const repsInput = row.querySelector('.reps-input').value; // Pega o valor de Reps
+            card.querySelectorAll('.set-row').forEach(row => { 
+                const isChecked = row.querySelector('.set-checkbox').checked; 
+                const weightInput = row.querySelector('.weight-input').value; 
+                const repsInput = row.querySelector('.reps-input').value; 
+                const rpeInput = row.querySelector('.rpe-input').value; 
                 
-                if (isChecked && weightInput && repsInput) {
-                    const w = parseFloat(weightInput);
-                    const r = parseInt(repsInput);
-                    sets.push({ weight: w, reps: r }); // Salva Reps variáveis
-                    if (w > maxWeightInWorkout) maxWeightInWorkout = w;
+                if (isChecked && weightInput && repsInput) { 
+                    const w = parseFloat(weightInput); 
+                    const r = parseInt(repsInput); 
+                    const rpe = parseFloat(rpeInput) || null; 
+                    
+                    if(rpe && (rpe < 6 || rpe > 10)) {
+                         hasInvalidRpe = true;
+                    }
+
+                    sets.push({ weight: w, reps: r, rpe: rpe }); 
+                    if (w > maxWeightInWorkout) maxWeightInWorkout = w; 
                 }
-            });
+            }); 
             
-            if (sets.length > 0) {
-                workoutData.exercises.push({ name: name, sets: sets });
-                const oldPr = getPersonalRecord(name);
-                if (maxWeightInWorkout > oldPr) newPrs.push({ name, weight: maxWeightInWorkout });
-            }
-        });
+            if (sets.length > 0) { 
+                workoutData.exercises.push({ name: name, sets: sets }); 
+                const oldPr = getPersonalRecord(name); 
+                if (maxWeightInWorkout > oldPr) newPrs.push({ name: name, weight: maxWeightInWorkout }); 
+            } 
+        }); 
         
         if (workoutData.exercises.length === 0) { 
             showToast("Nenhum dado para salvar. Preencha pelo menos uma série.", 'warning'); 
-            return; 
+            return;
+        } 
+        
+        if (hasInvalidRpe) {
+             showToast("Atenção: Um ou mais RPEs estão fora do intervalo (6 a 10). Verifique antes de salvar.", 'warning');
+             return;
         }
         
-        let history = getHistory();
-        history.push(workoutData);
-        localStorage.setItem('workoutHistory', JSON.stringify(history));
+        let history = getHistory(); 
+        history.push(workoutData); 
+        localStorage.setItem('workoutHistory', JSON.stringify(history)); 
         
-        let alertMessage = `Treino salvo com sucesso!`;
-        if (newPrs.length > 0) {
-            newPrs.forEach(pr => {
-                showToast(`🏆 NOVO PR! ${pr.name}: ${pr.weight}kg. Parabéns!`, 'pr', 8000);
-            });
-        }
-        showToast(alertMessage, 'success');
-
-        renderWorkouts(); showWorkout(workoutId);
-    }
-
+        let alertMessage = `Treino salvo com sucesso!`; 
+        if (newPrs.length > 0) { 
+            newPrs.forEach(pr => { 
+                showToast(`🏆 NOVO PR! ${pr.name}: ${pr.weight}kg. Parabéns!`, 'pr', 8000); 
+            }); 
+        } 
+        showToast(alertMessage, 'success'); 
+        renderWorkouts(); 
+        showWorkout(workoutId); 
+    } 
+    
     const chartModal = document.getElementById('chartModal');
-    let evolutionChart;
-    let muscleEvolutionChart; // NOVO: Variável global para o gráfico de evolução muscular
-    const allWorkoutExercises = Object.values(workouts).flat(); // Auxiliar para buscar info de músculo
 
     function openChartModal() {
         chartModal.classList.add('show');
-        showModalView('evolution');
-        
-        // Listeners para Evolução por Exercício (Existente)
-        document.getElementById('exerciseSelector').onchange = updateChart;
-        document.getElementById('periodSelector').onchange = updateChart;
-        document.getElementById('chartTypeSelector').onchange = updateChart;
-        
-        // Listeners para Evolução por Grupo Muscular (Novo)
-        document.getElementById('muscleGroupSelector').onchange = updateMuscleEvolutionChart;
-        document.getElementById('musclePeriodSelector').onchange = updateMuscleEvolutionChart;
-        document.getElementById('muscleChartTypeSelector').onchange = updateMuscleEvolutionChart;
-
-        populateExerciseSelector();
-        populateMuscleGroupSelector(); // Chamada para popular novo seletor
-        updateChart();
-        updateMuscleEvolutionChart(); // Chamada inicial para o novo gráfico
+        showModalView('evolution'); 
     }
-    function closeChartModal() { chartModal.classList.remove('show'); }
+
+    function closeChartModal() {
+        chartModal.classList.remove('show');
+    }
 
     function showModalView(viewId) {
         document.querySelectorAll('.modal-view').forEach(v => v.classList.remove('active'));
         document.getElementById(`${viewId}-view`).classList.add('active');
         document.querySelectorAll('.modal-tab-button').forEach(b => b.classList.remove('active'));
         document.querySelector(`.modal-tab-button[onclick="showModalView('${viewId}')"]`).classList.add('active');
-
-        // Melhoria: Carregamento sob demanda para performance
-        if (viewId === 'evolution') { 
-            updateChart(); 
-            updateMuscleEvolutionChart(); // Garante que o novo gráfico também seja atualizado ao abrir a aba
+        
+        if (viewId === 'evolution') {
+            // Garante que o modo de visualização correto seja renderizado
+            toggleEvolutionView(currentEvolutionView); 
         }
-		if (viewId === 'balance') updateBalanceChart();
+        if (viewId === 'balance') renderBalanceChart(); 
         if (viewId === 'consistency') renderConsistencyCalendar();
-        if (viewId === 'records') renderPrList();
-        if (viewId === 'history') renderHistoryList();
-    }
-
-    // --- FUNÇÃO MODIFICADA PARA ORDENAÇÃO ALFABÉTICA (Renomeada) ---
-    function populateExerciseSelector() { // Renomeado de populateSelectors
-        const history = getHistory();
-        // 1. Coleta os nomes únicos dos exercícios
-        const exSet = new Set(history.flatMap(w => w.exercises.map(e => e.name)));
-        
-        // 2. Converte para Array e ordena em ordem alfabética (usando localeCompare para PT-BR)
-        const sortedExercises = Array.from(exSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-        
-        const selector = document.getElementById('exerciseSelector');
-        
-        // 3. Popula com a lista ordenada
-        if (sortedExercises.length === 0) {
-            selector.innerHTML = "<option>Nenhum treino salvo</option>";
-        } else {
-            selector.innerHTML = "";
-            sortedExercises.forEach(name => selector.innerHTML += `<option value="${name}">${name}</option>`);
+        if (viewId === 'records') {
+            renderPRs(); 
+            renderRecordsChart('upper'); 
+            renderRecordsChart('lower');
+            renderProgressorsChart(); 
         }
+        if (viewId === 'history') renderHistory();
     }
-    // --- FIM DA FUNÇÃO MODIFICADA ---
     
-    // --- NOVA FUNÇÃO: Popular Seletor de Músculos ---
-    function populateMuscleGroupSelector() {
-        const muscleSet = new Set(allWorkoutExercises.map(ex => ex.targetMuscle));
-        const sortedMuscles = Array.from(muscleSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-        const selector = document.getElementById('muscleGroupSelector');
-
-        if (sortedMuscles.length === 0) {
-            selector.innerHTML = "<option>Nenhum músculo encontrado</option>";
-        } else {
-            selector.innerHTML = "";
-            sortedMuscles.forEach(name => selector.innerHTML += `<option value="${name}">${name}</option>`);
-        }
-    }
-    // --- FIM DA NOVA FUNÇÃO ---
-
-    function updateChart() {
-        const history = getHistory();
-        const selEx = document.getElementById('exerciseSelector').value;
-        const selPeriod = parseInt(document.getElementById('periodSelector').value);
-        const chartType = document.getElementById('chartTypeSelector').value;
-        if (!selEx || history.length === 0) { if (evolutionChart) evolutionChart.destroy(); return; }
-        const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - selPeriod);
-        const filtered = history.filter(w => w && w.date && new Date(w.date) >= cutoff).map(w => {
-            const ex = w.exercises.find(e => e.name === selEx); if (!ex) return null;
-            // Cálculo de Volume e Carga Máxima usando Reps variáveis
-            const vol = ex.sets.reduce((sum, set) => sum + (set.weight * set.reps), 0);
-            const maxW = Math.max(0, ...ex.sets.map(set => set.weight));
-            return { date: new Date(w.date).toLocaleDateString('pt-BR'), vol, maxW };
-        }).filter(Boolean);
-        const labels = [...new Set(filtered.map(d => d.date))];
-        const volData = [], weightData = [];
-        labels.forEach(label => {
-            const dayData = filtered.filter(d => d.date === label);
-            if (dayData.length > 0) {
-                // Para volume, somamos os volumes do mesmo exercício no dia (se houver mais de um treino)
-                volData.push(dayData.reduce((sum, item) => sum + item.vol, 0));
-                // Para carga máxima, pegamos a maior carga do dia para aquele exercício
-                weightData.push(Math.max(...dayData.map(item => item.maxW)));
-            }
-        });
-        const ctx = document.getElementById('evolutionChart').getContext('2d');
-        if (evolutionChart) evolutionChart.destroy();
-        evolutionChart = new Chart(ctx, {
-            type: chartType, data: { labels, datasets: [
-                { label: `Volume Total (Kg)`, data: volData, borderColor: 'rgba(0, 123, 255, 1)', backgroundColor: 'rgba(0, 123, 255, 0.5)', yAxisID: 'yVolume' },
-                { label: `Carga Máxima (Kg)`, data: weightData, borderColor: 'rgba(40, 167, 69, 1)', backgroundColor: 'rgba(40, 167, 69, 0.5)', yAxisID: 'yWeight' }
-            ]},
-            options: {
-                responsive: true,
-                interaction: { mode: 'index', intersect: false },
-                scales: {
-                    x: { ticks: { color: 'var(--text-color)' } },
-                    yVolume: { type: 'linear', display: true, position: 'left', ticks: { color: 'rgba(0, 123, 255, 1)' }, beginAtZero: true, title: { display: true, text: 'Volume Total', color: 'rgba(0, 123, 255, 1)'} },
-                    yWeight: { type: 'linear', display: true, position: 'right', ticks: { color: 'rgba(40, 167, 69, 1)' }, beginAtZero: true, title: { display: true, text: 'Carga Máxima', color: 'rgba(40, 167, 69, 1)'}, grid: { drawOnChartArea: false } }
-                },
-                plugins: { legend: { labels: { color: 'var(--text-color)' } } }
-            }
-        });
-    }
-
-    // --- NOVA FUNÇÃO: Gráfico de Evolução por Grupo Muscular ---
-    function updateMuscleEvolutionChart() {
-        const history = getHistory();
-        const selMuscle = document.getElementById('muscleGroupSelector').value;
-        const selPeriod = parseInt(document.getElementById('musclePeriodSelector').value);
-        const chartType = document.getElementById('muscleChartTypeSelector').value;
-
-        if (!selMuscle || history.length === 0) { if (muscleEvolutionChart) muscleEvolutionChart.destroy(); return; }
-
-        const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - selPeriod);
-        const dailyData = {}; 
-
-        history.filter(w => w && w.date && new Date(w.date) >= cutoff).forEach(w => {
-            const dateStr = new Date(w.date).toLocaleDateString('pt-BR');
-            
-            w.exercises.forEach(ex => {
-                const exInfo = allWorkoutExercises.find(info => info.name === ex.name);
-                
-                if (exInfo && exInfo.targetMuscle === selMuscle) {
-                    const dailyEntry = dailyData[dateStr] || { totalVolume: 0, maxWeights: [] };
-                    
-                    const volume = ex.sets.reduce((sum, set) => sum + (set.weight * set.reps), 0);
-                    const maxW = Math.max(0, ...ex.sets.map(set => set.weight));
-                    
-                    dailyEntry.totalVolume += volume; // Soma o volume de todos os exercícios do músculo no dia
-                    dailyEntry.maxWeights.push(maxW); // Coleciona as cargas máximas de cada exercício do músculo no dia
-                    
-                    dailyData[dateStr] = dailyEntry;
-                }
-            });
-        });
-
-        const sortedDates = Object.keys(dailyData).sort((a, b) => {
-            const parseDate = (dateStr) => {
-                const [day, month, year] = dateStr.split('/');
-                return new Date(year, month - 1, day);
-            };
-            return parseDate(a) - parseDate(b);
-        });
-        
-        const labels = sortedDates;
-        const volData = sortedDates.map(date => dailyData[date].totalVolume);
-        const maxWeightData = sortedDates.map(date => Math.max(0, ...dailyData[date].maxWeights)); // A maior carga de QUALQUER exercício do grupo no dia
-
-        const ctx = document.getElementById('muscleEvolutionChart').getContext('2d');
-        if (muscleEvolutionChart) muscleEvolutionChart.destroy();
-        
-        muscleEvolutionChart = new Chart(ctx, {
-            type: chartType, 
-            data: { 
-                labels, 
-                datasets: [
-                    { 
-                        label: `Volume Total ${selMuscle} (Kg)`, 
-                        data: volData, 
-                        borderColor: 'rgba(249, 177, 21, 1)', 
-                        backgroundColor: 'rgba(249, 177, 21, 0.5)', 
-                        yAxisID: 'yVolume' 
-                    },
-                    { 
-                        label: `Carga Máxima (Kg) do Grupo`, 
-                        data: maxWeightData, 
-                        borderColor: 'rgba(255, 0, 0, 1)', 
-                        backgroundColor: 'rgba(255, 0, 0, 0.5)', 
-                        yAxisID: 'yWeight' 
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                interaction: { mode: 'index', intersect: false },
-                scales: {
-                    x: { ticks: { color: 'var(--text-color)' } },
-                    yVolume: { type: 'linear', display: true, position: 'left', ticks: { color: 'rgba(249, 177, 21, 1)' }, beginAtZero: true, title: { display: true, text: 'Volume Total', color: 'rgba(249, 177, 21, 1)'} },
-                    yWeight: { type: 'linear', display: true, position: 'right', ticks: { color: 'rgba(255, 0, 0, 1)' }, beginAtZero: true, title: { display: true, text: 'Carga Máxima do Grupo', color: 'rgba(255, 0, 0, 1)'}, grid: { drawOnChartArea: false } }
-                },
-                plugins: { legend: { labels: { color: 'var(--text-color)' } } }
-            }
-        });
-    }
-    // --- FIM DA NOVA FUNÇÃO ---
-
-
-    // MELHORIA APLICADA ANTERIORMENTE: Mapeamento de Cores para Gráfico de Balanço
-    const MUSCLE_COLORS = {
-        'Peito': 'rgba(220, 53, 69, 0.7)',       // Cor: --muscle-chest (#dc3545)
-        'Ombros': 'rgba(255, 193, 7, 0.7)',      // Cor: --muscle-shoulders (#ffc107)
-        'Costas': 'rgba(0, 123, 255, 0.7)',      // Cor: --muscle-back (#007bff)
-        'Bíceps': 'rgba(40, 167, 69, 0.7)',      // Cor: --muscle-biceps (#28a745)
-        'Tríceps': 'rgba(23, 162, 184, 0.7)',    // Cor: --muscle-triceps (#17a2b8)
-        'Pernas': 'rgba(249, 177, 21, 0.7)',     // Cor: --muscle-legs (#f9b115)
-        'Glúteos': 'rgba(156, 39, 176, 0.7)',    // Cor: --muscle-glutes (#9c27b0)
-        'Posteriores': 'rgba(139, 195, 74, 0.7)',// Cor: --muscle-hamstrings (#8bc34a)
-        'Panturrilhas': 'rgba(96, 125, 139, 0.7)'// Cor: --muscle-calves (#607d8b)
-    };
-
-    let balanceChart;
-    function updateBalanceChart() {
-        const history = getHistory();
-        // O período de tempo ainda é definido pelo selector da aba Evolução (periodSelector)
-        // Usamos o selector de período do gráfico de exercício como base.
-        const selPeriod = parseInt(document.getElementById('periodSelector').value); 
-        if (history.length === 0) { if (balanceChart) balanceChart.destroy(); return; }
-
-        const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - selPeriod);
-        const volumeByMuscle = {};
-        const allMuscles = new Set(Object.values(workouts).flat().map(ex => ex.targetMuscle));
-        allMuscles.forEach(m => volumeByMuscle[m] = 0);
-        const filteredHistory = history.filter(w => w.date >= cutoff);
-
-        filteredHistory.forEach(workout => {
-            workout.exercises.forEach(exercise => {
-                const exerciseInfo = allWorkoutExercises.find(ex => ex.name === exercise.name);
-                if (exerciseInfo && exerciseInfo.targetMuscle) {
-                    const volume = exercise.sets.reduce((sum, set) => sum + (set.weight * set.reps), 0); 
-                    volumeByMuscle[exerciseInfo.targetMuscle] += volume;
-                }
-            });
-        });
-
-        // Remove músculos com volume zero para não poluir o gráfico
-        const labels = Object.keys(volumeByMuscle).filter(m => volumeByMuscle[m] > 0);
-        const data = labels.map(m => volumeByMuscle[m]);
-
-        // Gera as cores do gráfico usando o mapeamento padronizado
-        const backgroundColors = labels.map(muscle => MUSCLE_COLORS[muscle] || 'rgba(128, 128, 128, 0.7)');
-
-        const ctx = document.getElementById('balanceChart').getContext('2d');
-        if (balanceChart) balanceChart.destroy();
-        
-        // --- APLICAÇÃO DA MELHORIA: Gráfico de Barras ---
-        balanceChart = new Chart(ctx, {
-            type: 'bar', // Tipo alterado para 'bar'
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Volume Total (Kg)',
-                    data: data,
-                    backgroundColor: backgroundColors,
-                    borderColor: 'var(--secondary-color)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                indexAxis: 'y', // Barras horizontais para melhor visualização dos nomes
-                plugins: {
-                    legend: { display: false }, // Legenda não é necessária para barras de cor única
-                    title: {
-                        display: true,
-                        text: `Balanço Muscular (Volume em Kg) nos Últimos ${selPeriod} Dias`,
-                        color: 'var(--text-color)'
-                    }
-                },
-                scales: {
-                    x: { // Eixo X para o Volume (Kg)
-                        beginAtZero: true,
-                        title: { display: true, text: 'Volume Total (Kg)', color: 'var(--text-color)' },
-                        ticks: { color: 'var(--text-color)' },
-                        grid: { color: 'rgba(68, 68, 68, 0.3)' }
-                    },
-                    y: { // Eixo Y para os Músculos
-                        ticks: { color: 'var(--text-color)' },
-                        grid: { display: false }
-                    }
-                }
-            }
-        });
-        // --- FIM DA MELHORIA ---
-    }
-
-	function checkForDeloadSuggestion() {
-        const history = getHistory();
-        if (history.length < 21) return;
-
-        const today = new Date();
-        const fourWeeksAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 28);
-        const recentHistory = history.filter(w => w.date >= fourWeeksAgo);
-        if (recentHistory.length < 9) return;
-
-        const getWeekNumber = (d) => {
-            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-        };
-
-        const volumeByWeek = {};
-        recentHistory.forEach(workout => {
-            const week = `${workout.date.getFullYear()}-${getWeekNumber(workout.date)}`;
-            const workoutVolume = workout.exercises.reduce((totalVol, ex) => 
-                totalVol + ex.sets.reduce((vol, set) => vol + (set.weight * set.reps), 0), 0);
-            
-            if (!volumeByWeek[week]) volumeByWeek[week] = 0;
-            volumeByWeek[week] += workoutVolume;
-        });
-
-        const weeklyVolumes = Object.values(volumeByWeek).sort((a, b) => a - b);
-        if (weeklyVolumes.length < 3) return;
-
-        const lastWeekVolume = weeklyVolumes[weeklyVolumes.length - 1];
-        const peakWeekVolume = Math.max(...weeklyVolumes);
-        const isVolumeStagnated = lastWeekVolume <= peakWeekVolume;
-
-        const twoWeeksAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 14);
-        let newPrsInLastTwoWeeks = 0;
-        const historyBeforeTwoWeeks = recentHistory.filter(w => w.date < twoWeeksAgo);
-        const historyLastTwoWeeks = recentHistory.filter(w => w.date >= twoWeeksAgo);
-
-        const prsBefore = {};
-        Object.values(workouts).flat().forEach(ex => {
-            let maxWeight = 0;
-            historyBeforeTwoWeeks.forEach(w => w.exercises.forEach(e => {
-                if (e.name === ex.name) {
-                    const currentMax = Math.max(0, ...e.sets.map(s => s.weight));
-                    if (currentMax > maxWeight) maxWeight = currentMax;
-                }
-            }));
-            prsBefore[ex.name] = maxWeight;
-        });
-
-        historyLastTwoWeeks.forEach(w => w.exercises.forEach(e => {
-            const prBefore = prsBefore[e.name] || 0;
-            const currentMax = Math.max(0, ...e.sets.map(s => s.weight));
-            if (currentMax > prBefore) {
-                newPrsInLastTwoWeeks++;
-            }
-        }));
-        
-        const havePRsStagnated = newPrsInLastTwoWeeks <= 1;
-
-        if (isVolumeStagnated && havePRsStagnated) {
-            const noticeContainer = document.getElementById('deload-notice-container');
-            const lastNoticeShown = localStorage.getItem('lastDeloadNotice');
-            const thirtyDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30).toISOString();
-
-            if (!lastNoticeShown || lastNoticeShown < thirtyDaysAgo) {
-                noticeContainer.innerHTML = `<div class="deload-notice" onclick="this.style.display='none'">📉 **Sinais de Fadiga?** Seu progresso de volume e força estagnou. Considere uma semana de *deload* (treinos mais leves).</div>`;
-                localStorage.setItem('lastDeloadNotice', today.toISOString());
-            }
-        }
-    }
-
-    // --- FUNÇÃO ALTERADA PARA USAR PREENCHIMENTO COMPLETO ---
-    function renderConsistencyCalendar() {
-        const calendarEl = document.getElementById('consistency-calendar');
-        const history = getHistory();
-        calendarEl.innerHTML = '';
-
-        const today = new Date();
-        const month = today.getMonth();
-        const year = today.getFullYear();
-
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].forEach(day => {
-            const headerEl = document.createElement('div');
-            headerEl.className = 'calendar-header';
-            headerEl.textContent = day;
-            calendarEl.appendChild(headerEl);
-        });
-
-        for (let i = 0; i < firstDay; i++) {
-            calendarEl.appendChild(document.createElement('div'));
-        }
-
-        for (let i = 1; i <= daysInMonth; i++) {
-            const dayEl = document.createElement('div');
-            dayEl.className = 'calendar-day';
-            dayEl.innerHTML = `<span>${i}</span>`; // Removemos o div.workout-dots
-            
-            const dayWorkouts = history.filter(w => {
-                const workoutDate = new Date(w.date);
-                return workoutDate.getDate() === i && workoutDate.getMonth() === month && workoutDate.getFullYear() === year;
-            });
-
-            if (dayWorkouts.length > 0) {
-                dayEl.classList.add('has-data');
-                
-                // Determina o tipo de treino
-                const workoutTypes = new Set(dayWorkouts.map(w => (w.workoutId && w.workoutId.includes('Upper')) ? 'upper' : 'lower'));
-                
-                const isUpper = workoutTypes.has('upper');
-                const isLower = workoutTypes.has('lower');
-
-                // Aplica a classe de cor correspondente
-                if (isUpper && isLower) {
-                    dayEl.classList.add('mixed');
-                } else if (isUpper) {
-                    dayEl.classList.add('upper-only');
-                } else if (isLower) {
-                    dayEl.classList.add('lower-only');
-                }
-            }
-            calendarEl.appendChild(dayEl);
-        }
-    }
-    // --- FIM DA FUNÇÃO ALTERADA ---
-
-    function renderHistoryList() {
-        const manager = document.getElementById('history-manager');
-        const history = getHistory();
-        manager.innerHTML = `<div class="history-manager-header"><h3>Histórico de Treinos</h3><div><button class="data-io-button export-button" onclick="exportData()">Exportar</button><button class="data-io-button import-button" onclick="importData()">Importar</button></div></div>`;
-        if (history.length === 0) { manager.innerHTML += '<p>Nenhum treino salvo.</p>'; return; }
-        history.slice().reverse().forEach((w, index) => {
-            const originalIndex = history.length - 1 - index;
-            const date = new Date(w.date).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
-            const workoutName = WORKOUT_NAMES[w.workoutId] || w.workoutId;
-            const notesHTML = w.notes ? `<p class="history-item-notes">Nota: ${w.notes}</p>` : '';
-            const item = document.createElement('div');
-            item.className = 'history-item';
-            item.innerHTML = `<div class="history-item-info"><strong>${date}</strong> - <span>${workoutName}</span>${notesHTML}</div><button class="delete-btn" onclick="deleteWorkout(${originalIndex})">🗑️</button>`;
-            manager.appendChild(item);
-        });
-    }
-
-    function renderPrList() {
-        const manager = document.getElementById('pr-manager');
-        manager.innerHTML = `<h3>🏆 Recordes Pessoais (PRs)</h3>`;
-        const allExercises = new Set(Object.values(workouts).flat().map(ex => ex.name));
-        let prsFound = 0;
-        const prList = document.createElement('div');
-        const history = getHistory();
-
-        // Ordena os exercícios por nome antes de listar os PRs
-        const sortedExerciseNames = Array.from(allExercises).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-        sortedExerciseNames.forEach(exName => {
-            const pr = getPersonalRecord(exName);
-            if (pr > 0) {
-                prsFound++;
-                const prWorkout = history.slice().reverse().find(w => w.exercises.some(ex => ex.name === exName && ex.sets.some(s => s.weight === pr)));
-                const prDate = prWorkout ? new Date(prWorkout.date).toLocaleDateString('pt-BR') : 'N/A';
-                const item = document.createElement('div');
-                item.className = 'pr-item';
-                item.innerHTML = `<div class="pr-item-info"><strong>${exName}</strong></div><div class="pr-item-details">${pr} kg <small>(${prDate})</small></div>`;
-                prList.appendChild(item);
-            }
-        });
-        if (prsFound === 0) {
-            manager.innerHTML += '<p>Nenhum recorde registrado ainda. Continue treinando!</p>';
-        } else {
-            manager.appendChild(prList);
-        }
-    }
-
-    function deleteWorkout(index) {
-        let history = getHistory();
-        const workoutDate = new Date(history[index].date).toLocaleDateString('pt-BR');
-        if (confirm(`Você tem certeza que deseja deletar o treino do dia ${workoutDate}?`)) {
-            history.splice(index, 1);
-            localStorage.setItem('workoutHistory', JSON.stringify(history));
-            renderWorkouts();
-            populateExerciseSelector();
-            showModalView('history');
-            showToast('Treino deletado com sucesso.', 'info');
-        }
-    }
-
-    // FUNÇÃO MELHORADA: exportData (usa Toast)
-    function exportData() {
+    function exportHistory() {
         const history = localStorage.getItem('workoutHistory');
-        if (!history || history === '[]') { 
-            showToast('Não há dados para exportar.', 'warning'); 
-            return; 
-        }
+        if (!history) { showToast("Nenhum dado de histórico para exportar.", 'warning'); return; }
+
         const blob = new Blob([history], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'meu_historico_de_treinos.json';
+        a.download = `BKP_${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         showToast('Histórico exportado com sucesso!', 'success');
     }
-
-    function importData() { document.getElementById('import-file-input').click(); }
-
-    document.getElementById('import-file-input').addEventListener('change', (event) => {
+    
+    document.getElementById('import-file-input').addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (!file) return;
+
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const importedHistory = JSON.parse(e.target.result);
-                if (!Array.isArray(importedHistory)) throw new Error("Formato inválido.");
-                const choice = confirm("Como você deseja importar os dados?\n\nOK para MESCLAR com os dados existentes.\nCancelar para SUBSTITUIR os dados existentes.");
-                if (choice) {
-                    const currentHistory = JSON.parse(localStorage.getItem('workoutHistory')) || [];
-                    const combinedHistory = [...currentHistory, ...importedHistory];
-                    // Remove duplicatas pela data para evitar entradas idênticas
-                    const uniqueHistory = Array.from(new Map(combinedHistory.map(item => [new Date(item.date).toISOString(), item])).values());
-                    localStorage.setItem('workoutHistory', JSON.stringify(uniqueHistory));
-                    showToast(`${importedHistory.length} registros mesclados com sucesso!`, 'success');
+                if (Array.isArray(importedHistory) && importedHistory.every(item => item.date && item.workoutId)) {
+                    localStorage.setItem('workoutHistory', JSON.stringify(importedHistory));
+                    showToast(`${importedHistory.length} registros importados com sucesso (substituindo os atuais)!`, 'success');
                 } else {
-                    if (confirm("ATENÇÃO: Isso apagará todos os seus dados atuais. Deseja continuar?")) {
-                        localStorage.setItem('workoutHistory', JSON.stringify(importedHistory));
-                        showToast(`${importedHistory.length} registros importados com sucesso (substituindo os atuais)!`, 'success');
-                    }
+                     showToast('O arquivo importado não parece ser um histórico válido.', 'error');
                 }
-                location.reload();
             } catch (error) {
                 showToast('Erro ao importar o arquivo. Verifique se o arquivo é um JSON válido exportado por este aplicativo.', 'error');
             }
+            location.reload(); 
         };
         reader.readAsText(file);
         event.target.value = '';
     });
+    
+    function checkForDeloadSuggestion() {
+        const history = getHistory();
+        if (history.length < 20) return;
+
+        const firstWorkoutDate = history[0].date; 
+        const today = new Date();
+        const daysSinceFirstWorkout = (today - firstWorkoutDate) / (1000 * 60 * 60 * 24); 
+        
+        if (daysSinceFirstWorkout > 56 || history.length % 20 === 0) {
+            const deloadContainer = document.getElementById('deload-notice-container');
+            if (!deloadContainer.querySelector('.deload-notice')) {
+                const deloadNotice = document.createElement('div');
+                deloadNotice.className = 'deload-notice';
+                deloadNotice.innerHTML = '⚠️ **SUGESTÃO DE DELOAD:** Você tem treinado intensamente por um tempo. Considere fazer uma semana de deload para recuperação! Clique para remover.';
+                deloadNotice.onclick = () => deloadNotice.remove();
+                deloadContainer.appendChild(deloadNotice);
+            }
+        }
+    }
+
 
     const themeSwitcher = document.getElementById('theme-switcher');
     const doc = document.documentElement;
@@ -1110,6 +2144,19 @@
         doc.setAttribute('data-theme', theme);
         themeSwitcher.textContent = theme === 'dark' ? '☀️' : '🌙';
         localStorage.setItem('theme', theme);
+        
+        if (document.getElementById('evolution-view') && document.getElementById('evolution-view').classList.contains('active')) {
+             // Só renderiza a view ativa
+             toggleEvolutionView(currentEvolutionView);
+        }
+        if (document.getElementById('balance-view') && document.getElementById('balance-view').classList.contains('active')) {
+             renderBalanceChart(); 
+        }
+        if (document.getElementById('records-view') && document.getElementById('records-view').classList.contains('active')) {
+             renderRecordsChart('upper'); 
+             renderRecordsChart('lower');
+             renderProgressorsChart(); 
+        }
     }
 
     themeSwitcher.addEventListener('click', () => {
@@ -1119,6 +2166,104 @@
     });
 
     window.onclick = function(event) { if (event.target == chartModal) closeChartModal(); }
+    
+    let currentCalendarDate = new Date();
+    
+    function getConsistencyData() {
+        const history = getHistory();
+        const consistencyMap = {}; 
+
+        history.forEach(w => {
+            const date = new Date(w.date);
+            const dateKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+            
+            if (!consistencyMap[dateKey]) {
+                consistencyMap[dateKey] = { upper: false, lower: false };
+            }
+
+            if (w.workoutId.startsWith('Upper')) {
+                consistencyMap[dateKey].upper = true;
+            } else if (w.workoutId.startsWith('Lower')) {
+                consistencyMap[dateKey].lower = true;
+            }
+        });
+
+        return consistencyMap;
+    }
+
+    function renderConsistencyCalendar(date = currentCalendarDate) {
+        currentCalendarDate = date;
+        const calendarContainer = document.getElementById('consistency-calendar');
+        const monthDisplay = document.getElementById('current-month-display');
+        const consistencyData = getConsistencyData();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+        const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        
+        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+        monthDisplay.textContent = `${monthNames[date.getMonth()]} de ${date.getFullYear()}`;
+        calendarContainer.innerHTML = '';
+        
+        dayNames.forEach(day => {
+            const header = document.createElement('div');
+            header.className = 'calendar-header';
+            header.textContent = day;
+            calendarContainer.appendChild(header);
+        });
+
+        const startDayIndex = startOfMonth.getDay();
+        for (let i = 0; i < startDayIndex; i++) {
+            calendarContainer.appendChild(document.createElement('div'));
+        }
+
+        for (let day = 1; day <= endOfMonth.getDate(); day++) {
+            const currentDate = new Date(date.getFullYear(), date.getMonth(), day);
+            const dateKey = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+            const dayElement = document.createElement('div');
+            dayElement.className = 'calendar-day';
+
+            const daySpan = document.createElement('span');
+            daySpan.textContent = day;
+            dayElement.appendChild(daySpan);
+
+            const data = consistencyData[dateKey];
+            if (data) {
+                dayElement.classList.add('has-data');
+                
+                let tooltipContent = `Dia ${day}:`;
+
+                if (data.upper && data.lower) {
+                    dayElement.classList.add('mixed');
+                    tooltipContent += ' Superiores e Inferiores';
+                } else if (data.upper) {
+                    dayElement.classList.add('upper-only');
+                    tooltipContent += ' Superiores';
+                } else if (data.lower) {
+                    dayElement.classList.add('lower-only');
+                    tooltipContent += ' Inferiores';
+                }
+
+                dayElement.title = tooltipContent;
+            } else {
+                 if (currentDate > today) {
+                     dayElement.style.opacity = 0.4;
+                 }
+            }
+            
+            calendarContainer.appendChild(dayElement);
+        }
+    }
+
+    function changeCalendarMonth(offset) {
+        const newDate = new Date(currentCalendarDate.getTime());
+        newDate.setMonth(newDate.getMonth() + offset);
+        renderConsistencyCalendar(newDate);
+    }
+
 
     document.addEventListener('DOMContentLoaded', () => {
         const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -1128,6 +2273,7 @@
 		checkForDeloadSuggestion();
         showWorkout('UpperA');
     });
+
 </script>
 
 </body>
