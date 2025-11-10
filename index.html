@@ -412,12 +412,12 @@
             { name: 'Tríceps Coice (Unilateral)', sets: 3, reps: '8-10', rest: 90, targetMuscle: 'Tríceps' },
         ],
         LowerA: [
-            { name: 'Agachamento Livre', sets: 4, reps: '8-12', rest: 120, targetMuscle: 'Quadríceps' },
-            { name: 'Leg Press 45º', sets: 4, reps: '8-12', rest: 120, targetMuscle: 'Quadríceps' },
-            { name: 'Cadeira Extensora', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Quadríceps' },
-			{ name: 'Afundo no Smith', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Quadríceps' },
-			{ name: 'Agachamento Búlgaro', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Quadríceps ' },
-            { name: 'Cadeira Flexora', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Posterior de Coxa/Gluteos' },
+            { name: 'Agachamento Livre', sets: 4, reps: '8-12', rest: 120, targetMuscle: 'Pernas' },
+            { name: 'Leg Press 45º', sets: 4, reps: '8-12', rest: 120, targetMuscle: 'Pernas' },
+            { name: 'Cadeira Extensora', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Pernas' },
+			{ name: 'Afundo no Smith', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Pernas' },
+			{ name: 'Agachamento Búlgaro', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Pernas ' },
+            { name: 'Cadeira Flexora', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Posteriores' },
         ],
         UpperB: [
             { name: 'Barra Fixa (ou Puxada Frontal)', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Costas' },
@@ -429,8 +429,8 @@
             { name: 'Rosca Inclinada com Halteres', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Bíceps' },
         ],
         LowerB: [
-            { name: 'Agachamento Sumô', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Posterior de Coxa/Gluteos' },
-			{ name: 'Stiff', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Posterior de Coxa/Gluteos' },
+            { name: 'Agachamento Sumô', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Glúteos' },
+			{ name: 'Stiff', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Posteriores' },
 			{ name: 'Cadeira Adutora', sets: 3, reps: '12-15', rest: 90, targetMuscle: 'Adutores' },
             { name: 'Panturrilha em Pé', sets: 5, reps: '15-20', rest: 60, targetMuscle: 'Panturrilhas' },
 			{ name: 'Desenvolvimento Militar', sets: 3, reps: '8-12', rest: 90, targetMuscle: 'Ombros' },
@@ -449,13 +449,13 @@
     const MUSCLE_CSS_VAR_MAP = {
         'Peito': '--muscle-chest', 'Ombros': '--muscle-shoulders', 'Costas': '--muscle-back',
         'Bíceps': '--muscle-biceps', 'Tríceps': '--muscle-triceps', 'Pernas': '--muscle-legs',
-        'Posteriores': '--muscle-hamstrings', 'Glúteos': '--muscle-glutes', 'Panturrilhas': '--muscle-calves'
+        'Posteriores': '--muscle-hamstrings', 'Glúteos': '--muscle-glutes', 'Panturrilhas': '--muscle-calves', 'Adutores': '--muscle-Adductors'
     };
     
     // Mapeamento de grupos musculares para tipo de treino
     const MUSCLE_TO_TYPE = {
         'Peito': 'upper', 'Ombros': 'upper', 'Costas': 'upper', 'Bíceps': 'upper', 'Tríceps': 'upper',
-        'Pernas': 'lower', 'Posteriores': 'lower', 'Glúteos': 'lower', 'Panturrilhas': 'lower'
+        'Pernas': 'lower', 'Posteriores': 'lower', 'Glúteos': 'lower', 'Panturrilhas': 'lower', 'Adutores': 'lower'
     };
 
     // NOVO: Tabela de RIR para Porcentagem da 1RM (Base Científica)
