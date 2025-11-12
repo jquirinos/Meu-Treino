@@ -35,6 +35,10 @@
             --progress-color: var(--success-color);
             /* NOVO: Cor da linha de volume */
             --volume-line-color: var(--accent-color);
+            /* NOVO: Cor para recomendações de progressão */
+            --progression-color: #9c27b0;
+            /* NOVO: Cor para alertas inteligentes */
+            --alert-color: #ff5722;
         }
         [data-theme="light"] {
             --primary-color: #f4f4f9; --secondary-color: #ffffff; --text-color: #0a0a0a;
@@ -66,12 +70,14 @@
         .workout-header { text-align: center; }
         .workout-plan { display: none; } .workout-plan.active { display: block; }
         .workout-meta { color: #888; margin-top: -1rem; margin-bottom: 1rem; font-style: italic; }
-        .variation-notice, .deload-notice {
+        .variation-notice, .deload-notice, .progression-notice, .smart-alert {
             padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: bold;
             cursor: pointer;
         }
         .variation-notice { background-color: var(--warning-color); color: #1a1a1a; }
 		.deload-notice { background-color: var(--info-color); color: white; }
+        .progression-notice { background-color: var(--progression-color); color: white; }
+        .smart-alert { background-color: var(--alert-color); color: white; }
         
         /* Melhoria: Cores de Categoria e PR */
         .exercise-card { 
@@ -119,6 +125,18 @@
             margin-top: 5px;
             margin-bottom: 10px;
             display: inline-block;
+        }
+        /* NOVO: Estilo para Recomendações de Progressão */
+        .progression-recommendation {
+            font-size: 0.9rem;
+            color: var(--progression-color);
+            padding: 8px 12px;
+            border: 1px solid var(--progression-color);
+            border-radius: 5px;
+            background-color: rgba(156, 39, 176, 0.1);
+            margin-top: 5px;
+            margin-bottom: 10px;
+            display: block;
         }
 
         .pr-badge { 
@@ -172,7 +190,7 @@
         .modal-view { display: none; } .modal-view.active { display: block; }
         
         /* NOVO/AJUSTADO: Estilo para o Canvas dos Gráficos */
-        #evolutionChart, #balanceChart, #recordsUpperChart, #recordsLowerChart, #progressorsChart, #weeklyVolumeChart { 
+        #evolutionChart, #balanceChart, #recordsUpperChart, #recordsLowerChart, #progressorsChart, #weeklyVolumeChart, #progressionChart { 
             /* Ajuste de tamanho para o gráfico */
             height: 350px !important; 
             max-height: 350px; 
@@ -272,6 +290,8 @@
         .toast-error { border-left-color: var(--danger-color); }
         .toast-warning { border-left-color: var(--warning-color); }
         .toast-pr { border-left-color: var(--pr-color); }
+        .toast-progression { border-left-color: var(--progression-color); }
+        .toast-alert { border-left-color: var(--alert-color); }
 
         /* --- NOVO ESTILO: MODERNIZAÇÃO DA ABA EVOLUÇÃO (GRÁFICOS) --- */
         .chart-mode-selector {
@@ -377,12 +397,16 @@
 <body>
     <div class="container">
 	    <div id="deload-notice-container"></div>
+        <div id="progression-notice-container"></div>
+        <div id="smart-alert-container"></div>
         <div class="header-container">
             <h1>Plano de Treino</h1>
             <button class="theme-switcher" id="theme-switcher">🌙</button>
         </div>
         <div class="main-controls" style="margin-top: 2rem;">
             <button class="main-button" onclick="openChartModal()">Ver Evolução</button>
+            <button class="main-button" onclick="showProgressionAnalysis()">Análise de Progressão</button>
+            <button class="main-button" onclick="showSmartAlerts()">Alertas Inteligentes</button>
         </div>
         <div class="workout-selector">
             <button class="tab-button active" onclick="showWorkout('UpperA')">Superiores A</button>
@@ -399,6 +423,8 @@
     <div id="toast-container"></div>
 
     <div id="chartModal" class="modal"></div>
+    <div id="progressionModal" class="modal"></div>
+    <div id="smartAlertsModal" class="modal"></div>
     <input type="file" id="import-file-input" accept=".json" style="display: none;">
 <script>
     const workouts = {
@@ -483,6 +509,7 @@
     let recordsLowerChart; 
     let progressorsChart; 
     let weeklyVolumeChart; // NOVO: Gráfico de Volume Semanal
+    let progressionChart; // NOVO: Gráfico de Progressão
     let currentEvolutionMode = 'exercise';
     let currentEvolutionView = 'individual'; // NOVO: 'individual' ou 'weekly'
     let currentRecordsMode = 'weight'; // 'weight' ou 'e1rm'
@@ -1108,6 +1135,12 @@
             intensityBar = `<span class="intensity-bar ${barClass}">Último RPE: ${lastRpe} (RIR: ${rir})</span>`;
         }
 
+        // NOVO: Adicionar recomendações de progressão
+        const progressionRecommendation = getProgressionRecommendation(exercise.name);
+        const progressionHTML = progressionRecommendation 
+            ? `<div class="progression-recommendation">💡 ${progressionRecommendation}</div>` 
+            : '';
+
         let tableRows = '';
         for (let i = 1; i <= exercise.sets; i++) {
             const currentPlaceholder = isPrescribed ? prescribedLoad : placeholderText.replace('Sug: ', '').replace('kg', '');
@@ -1131,6 +1164,7 @@
                         <p class="exercise-meta">${exercise.sets} séries x ${exercise.reps} reps (${exercise.targetMuscle})</p>
                         ${loadPrescription} 
                         ${intensityBar} 
+                        ${progressionHTML}
                     </div>
                     <div>
                         <button class="focus-button" onclick="toggleFocus(this)">👁️</button>
@@ -1154,6 +1188,164 @@
                 </table>
             </div>
         `;
+    }
+    
+    // NOVO: Função para obter recomendações de progressão
+    function getProgressionRecommendation(exerciseName) {
+        const history = getHistory();
+        const exerciseHistory = history
+            .map(w => w.exercises.find(ex => ex.name === exerciseName))
+            .filter(ex => ex)
+            .slice(-5); // Últimos 5 treinos
+        
+        if (exerciseHistory.length < 3) return null;
+        
+        // Analisa tendência de progresso
+        const e1rmTrend = [];
+        exerciseHistory.forEach(ex => {
+            const maxE1RM = Math.max(...ex.sets.map(set => calculateE1RM(set.weight, set.reps)));
+            e1rmTrend.push(maxE1RM);
+        });
+        
+        // Calcula se está estagnado
+        const lastThree = e1rmTrend.slice(-3);
+        const isStagnant = lastThree.every(val => val <= lastThree[0] * 1.02); // Menos de 2% de aumento nos últimos 3 treinos
+        
+        if (isStagnant) {
+            const recommendations = [
+                "Tente aumentar 2.5kg na próxima sessão",
+                "Considere mudar para variação do exercício",
+                "Aumente o volume (1 série extra)",
+                "Diminua o descanso entre séries",
+                "Experimente técnica de intensidade (drop sets)"
+            ];
+            return recommendations[Math.floor(Math.random() * recommendations.length)];
+        }
+        
+        // Se está progredindo bem
+        if (e1rmTrend[e1rmTrend.length - 1] > e1rmTrend[0] * 1.05) { // Mais de 5% de aumento
+            return "Continue com a progressão atual!";
+        }
+        
+        return null;
+    }
+    
+    // NOVO: Função para analisar progressão geral
+    function analyzeProgression() {
+        const history = getHistory();
+        if (history.length < 4) return null;
+        
+        const analysis = {
+            progressing: [],
+            stagnating: [],
+            recommendations: []
+        };
+        
+        // Analisa cada exercício
+        const allExercises = [...new Set(history.flatMap(w => w.exercises.map(ex => ex.name)))];
+        
+        allExercises.forEach(exerciseName => {
+            const exerciseHistory = history
+                .map(w => w.exercises.find(ex => ex.name === exerciseName))
+                .filter(ex => ex)
+                .slice(-4); // Últimos 4 treinos
+            
+            if (exerciseHistory.length < 3) return;
+            
+            const e1rmTrend = exerciseHistory.map(ex => 
+                Math.max(...ex.sets.map(set => calculateE1RM(set.weight, set.reps)))
+            );
+            
+            const first = e1rmTrend[0];
+            const last = e1rmTrend[e1rmTrend.length - 1];
+            const progress = ((last - first) / first) * 100;
+            
+            if (progress > 5) {
+                analysis.progressing.push({
+                    name: exerciseName,
+                    progress: progress.toFixed(1)
+                });
+            } else if (progress < 2) {
+                analysis.stagnating.push({
+                    name: exerciseName,
+                    progress: progress.toFixed(1)
+                });
+            }
+        });
+        
+        // Gera recomendações gerais
+        if (analysis.stagnating.length > analysis.progressing.length) {
+            analysis.recommendations.push("Considere uma semana de deload");
+            analysis.recommendations.push("Mude a ordem dos exercícios no treino");
+        }
+        
+        if (analysis.progressing.length >= 3) {
+            analysis.recommendations.push("Continue com o programa atual - está funcionando bem!");
+        }
+        
+        return analysis;
+    }
+    
+    // NOVO: Função para mostrar análise de progressão
+    function showProgressionAnalysis() {
+        const analysis = analyzeProgression();
+        const modal = document.getElementById('progressionModal');
+        
+        if (!analysis) {
+            showToast("Precisa de mais dados para análise de progressão (mínimo 4 treinos)", "warning");
+            return;
+        }
+        
+        let html = `
+            <div class="modal-content">
+                <span class="close-button" onclick="closeProgressionModal()">&times;</span>
+                <h2 style="text-align:center; color: var(--progression-color);">Análise de Progressão</h2>
+                
+                <div style="display: flex; justify-content: space-around; margin: 2rem 0;">
+                    <div style="text-align: center;">
+                        <h3 style="color: var(--success-color);">${analysis.progressing.length}</h3>
+                        <p>Exercícios Progredindo</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <h3 style="color: var(--warning-color);">${analysis.stagnating.length}</h3>
+                        <p>Exercícios Estagnados</p>
+                    </div>
+                </div>
+        `;
+        
+        if (analysis.progressing.length > 0) {
+            html += `<h3>✅ Exercícios com Boa Progressão:</h3><ul>`;
+            analysis.progressing.forEach(ex => {
+                html += `<li><strong>${ex.name}</strong>: +${ex.progress}%</li>`;
+            });
+            html += `</ul>`;
+        }
+        
+        if (analysis.stagnating.length > 0) {
+            html += `<h3>⚠️ Exercícios Estagnados:</h3><ul>`;
+            analysis.stagnating.forEach(ex => {
+                html += `<li><strong>${ex.name}</strong>: ${ex.progress}%</li>`;
+            });
+            html += `</ul>`;
+        }
+        
+        if (analysis.recommendations.length > 0) {
+            html += `<h3>💡 Recomendações:</h3><ul>`;
+            analysis.recommendations.forEach(rec => {
+                html += `<li>${rec}</li>`;
+            });
+            html += `</ul>`;
+        }
+        
+        html += `</div>`;
+        
+        modal.innerHTML = html;
+        modal.classList.add('show');
+    }
+    
+    // NOVO: Função para fechar modal de progressão
+    function closeProgressionModal() {
+        document.getElementById('progressionModal').classList.remove('show');
     }
     
     function checkRpeRange(input) {
@@ -2134,6 +2326,215 @@
         }
     }
 
+    // NOVO: Função para verificar e mostrar recomendações de progressão
+    function checkForProgressionRecommendations() {
+        const analysis = analyzeProgression();
+        if (!analysis) return;
+        
+        if (analysis.stagnating.length > 2) {
+            const progressionContainer = document.getElementById('progression-notice-container');
+            if (!progressionContainer.querySelector('.progression-notice')) {
+                const progressionNotice = document.createElement('div');
+                progressionNotice.className = 'progression-notice';
+                progressionNotice.innerHTML = '💡 **ANÁLISE DE PROGRESSÃO:** Vários exercícios estão estagnados. Clique para ver recomendações.';
+                progressionNotice.onclick = showProgressionAnalysis;
+                progressionContainer.appendChild(progressionNotice);
+            }
+        }
+    }
+
+    // NOVO: SISTEMA DE ALERTA INTELIGENTE
+    function analyzeSmartAlerts() {
+        const history = getHistory();
+        if (history.length < 5) return [];
+        
+        const alerts = [];
+        const today = new Date();
+        
+        // 1. Verificar frequência de treino
+        const lastWorkoutDate = new Date(history[history.length - 1].date);
+        const daysSinceLastWorkout = Math.floor((today - lastWorkoutDate) / (1000 * 60 * 60 * 24));
+        
+        if (daysSinceLastWorkout > 7) {
+            alerts.push({
+                type: 'frequency',
+                priority: 'high',
+                title: 'Frequência de Treino Baixa',
+                message: `Faz ${daysSinceLastWorkout} dias desde seu último treino. Consistência é fundamental para resultados!`,
+                recommendation: 'Programe seu próximo treino o quanto antes.'
+            });
+        }
+        
+        // 2. Verificar desequilíbrio muscular
+        const balanceData = getProcessedBalanceData();
+        if (balanceData.labels.length > 0) {
+            const maxVolume = Math.max(...balanceData.data);
+            const minVolume = Math.min(...balanceData.data);
+            const imbalanceRatio = maxVolume / minVolume;
+            
+            if (imbalanceRatio > 3) {
+                const weakestMuscle = balanceData.labels[balanceData.data.indexOf(minVolume)];
+                alerts.push({
+                    type: 'balance',
+                    priority: 'medium',
+                    title: 'Desequilíbrio Muscular Detectado',
+                    message: `Seu volume de treino para ${weakestMuscle} está significativamente menor que outros grupos musculares.`,
+                    recommendation: `Considere aumentar o volume ou frequência para ${weakestMuscle}.`
+                });
+            }
+        }
+        
+        // 3. Verificar progressão estagnada
+        const progressionAnalysis = analyzeProgression();
+        if (progressionAnalysis && progressionAnalysis.stagnating.length > 3) {
+            alerts.push({
+                type: 'progression',
+                priority: 'medium',
+                title: 'Progressão Estagnada',
+                message: `${progressionAnalysis.stagnating.length} exercícios estão mostrando pouco ou nenhum progresso.`,
+                recommendation: 'Considere mudar exercícios, aumentar intensidade ou variar o volume.'
+            });
+        }
+        
+        // 4. Verificar RPE consistente fora da zona ideal
+        let lowRpeCount = 0;
+        let highRpeCount = 0;
+        
+        history.slice(-10).forEach(workout => {
+            workout.exercises.forEach(exercise => {
+                exercise.sets.forEach(set => {
+                    if (set.rpe) {
+                        if (set.rpe < 7) lowRpeCount++;
+                        if (set.rpe > 9) highRpeCount++;
+                    }
+                });
+            });
+        });
+        
+        if (lowRpeCount > highRpeCount * 2) {
+            alerts.push({
+                type: 'intensity',
+                priority: 'low',
+                title: 'Intensidade Muito Baixa',
+                message: 'Muitas séries estão sendo feitas com RPE abaixo de 7.',
+                recommendation: 'Aumente a intensidade para continuar progredindo.'
+            });
+        }
+        
+        if (highRpeCount > lowRpeCount * 3) {
+            alerts.push({
+                type: 'intensity',
+                priority: 'medium',
+                title: 'Intensidade Muito Alta',
+                message: 'Muitas séries estão sendo feitas com RPE acima de 9.',
+                recommendation: 'Considere reduzir a intensidade para evitar overtraining.'
+            });
+        }
+        
+        // 5. Verificar volume semanal excessivo
+        const weeklyVolume = getWeeklyVolumeData();
+        if (weeklyVolume.labels.length > 0) {
+            const recentWeeks = weeklyVolume.datasets[0].data.slice(-4); // Últimas 4 semanas
+            const avgVolume = recentWeeks.reduce((a, b) => a + b, 0) / recentWeeks.length;
+            
+            if (avgVolume > 20000) { // Limite arbitrário - ajustar conforme necessário
+                alerts.push({
+                    type: 'volume',
+                    priority: 'medium',
+                    title: 'Volume Semanal Elevado',
+                    message: 'Seu volume de treino está consistentemente alto.',
+                    recommendation: 'Considere uma semana de deload ou redução de volume para otimizar recuperação.'
+                });
+            }
+        }
+        
+        return alerts;
+    }
+    
+    // NOVO: Função para mostrar alertas inteligentes
+    function showSmartAlerts() {
+        const alerts = analyzeSmartAlerts();
+        const modal = document.getElementById('smartAlertsModal');
+        
+        let html = `
+            <div class="modal-content">
+                <span class="close-button" onclick="closeSmartAlertsModal()">&times;</span>
+                <h2 style="text-align:center; color: var(--alert-color);">Alertas Inteligentes</h2>
+        `;
+        
+        if (alerts.length === 0) {
+            html += `
+                <div style="text-align:center; padding: 2rem;">
+                    <h3 style="color: var(--success-color);">✅ Tudo em Ordem!</h3>
+                    <p>Nenhum alerta crítico detectado. Continue com seu programa atual.</p>
+                </div>
+            `;
+        } else {
+            // Ordenar alertas por prioridade
+            const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+            alerts.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
+            
+            html += `<div style="margin-top: 1rem;">`;
+            
+            alerts.forEach(alert => {
+                let priorityColor;
+                switch(alert.priority) {
+                    case 'high': priorityColor = 'var(--danger-color)'; break;
+                    case 'medium': priorityColor = 'var(--warning-color)'; break;
+                    case 'low': priorityColor = 'var(--info-color)'; break;
+                }
+                
+                html += `
+                    <div class="smart-alert" style="margin-bottom: 1rem; text-align: left; cursor: default;">
+                        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${priorityColor}; margin-right: 10px;"></div>
+                            <h4 style="margin: 0;">${alert.title}</h4>
+                        </div>
+                        <p style="margin: 0.5rem 0;">${alert.message}</p>
+                        <p style="margin: 0; font-style: italic;"><strong>Recomendação:</strong> ${alert.recommendation}</p>
+                    </div>
+                `;
+            });
+            
+            html += `</div>`;
+        }
+        
+        html += `</div>`;
+        
+        modal.innerHTML = html;
+        modal.classList.add('show');
+    }
+    
+    // NOVO: Função para fechar modal de alertas
+    function closeSmartAlertsModal() {
+        document.getElementById('smartAlertsModal').classList.remove('show');
+    }
+    
+    // NOVO: Função para verificar e exibir alertas automaticamente
+    function checkAndShowSmartAlerts() {
+        const alerts = analyzeSmartAlerts();
+        const highPriorityAlerts = alerts.filter(alert => alert.priority === 'high');
+        
+        if (highPriorityAlerts.length > 0) {
+            const alertContainer = document.getElementById('smart-alert-container');
+            
+            // Limpar alertas existentes
+            alertContainer.innerHTML = '';
+            
+            highPriorityAlerts.forEach(alert => {
+                const alertElement = document.createElement('div');
+                alertElement.className = 'smart-alert';
+                alertElement.innerHTML = `
+                    <strong>${alert.title}</strong><br>
+                    ${alert.message}<br>
+                    <em>${alert.recommendation}</em>
+                `;
+                alertElement.onclick = showSmartAlerts;
+                alertContainer.appendChild(alertElement);
+            });
+        }
+    }
+
 
     const themeSwitcher = document.getElementById('theme-switcher');
     const doc = document.documentElement;
@@ -2163,7 +2564,11 @@
         applyTheme(newTheme);
     });
 
-    window.onclick = function(event) { if (event.target == chartModal) closeChartModal(); }
+    window.onclick = function(event) { 
+        if (event.target == chartModal) closeChartModal();
+        if (event.target == document.getElementById('progressionModal')) closeProgressionModal();
+        if (event.target == document.getElementById('smartAlertsModal')) closeSmartAlertsModal();
+    }
     
     let currentCalendarDate = new Date();
     
@@ -2269,6 +2674,8 @@
 		createFocusOverlay();
         renderWorkouts();
 		checkForDeloadSuggestion();
+        checkForProgressionRecommendations(); // NOVO: Verificar recomendações de progressão
+        checkAndShowSmartAlerts(); // NOVO: Verificar e exibir alertas automaticamente
         showWorkout('UpperA');
     });
 
