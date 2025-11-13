@@ -426,24 +426,26 @@
     <div id="progressionModal" class="modal"></div>
     <div id="smartAlertsModal" class="modal"></div>
     <input type="file" id="import-file-input" accept=".json" style="display: none;">
+
 <script>
+    // Constantes e configurações
     const workouts = {
-                UpperA: [
+        UpperA: [
             { name: 'Supino Inclinado com Halteres', sets: 4, reps: '8-12', rest: 60, targetMuscle: 'Peito' },
             { name: 'Supino Reto com Barra', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Peito' },
             { name: 'Crucifixo Inclinado com Halteres', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Peito' },
             { name: 'Crossover (Polia Alta)', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Peito' },
             { name: 'Tríceps Testa Cross', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Tríceps' },
-			{ name: 'Tríceps Corda', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Tríceps' },
+            { name: 'Tríceps Corda', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Tríceps' },
             { name: 'Tríceps Coice (Unilateral)', sets: 4, reps: '8-10', rest: 90, targetMuscle: 'Tríceps' },
         ],
         LowerA: [
             { name: 'Agachamento Livre', sets: 4, reps: '8-12', rest: 120, targetMuscle: 'Pernas' },
             { name: 'Leg Press 45º', sets: 4, reps: '8-12', rest: 120, targetMuscle: 'Pernas' },
             { name: 'Cadeira Extensora', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Pernas' },
-			{ name: 'Afundo no Smith', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Pernas' },
+            { name: 'Afundo no Smith', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Pernas' },
             { name: 'Aguachamento Hack', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Pernas' },
-			{ name: 'Panturrilha em Sentado', sets: 5, reps: '15-20', rest: 60, targetMuscle: 'Panturrilhas' },
+            { name: 'Panturrilha em Sentado', sets: 5, reps: '15-20', rest: 60, targetMuscle: 'Panturrilhas' },
         ],
         UpperB: [
             { name: 'Barra Fixa (ou Puxada Frontal)', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Costas' },
@@ -455,14 +457,14 @@
             { name: 'Rosca Inclinada com Halteres', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Bíceps' },
         ],
         LowerB: [
-			{ name: 'Stiff', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Posteriores' },
-			{ name: 'Cadeira Flexora', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Posteriores' },
-			{ name: 'Levantamento Terra', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Posteriores' },
+            { name: 'Stiff', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Posteriores' },
+            { name: 'Cadeira Flexora', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Posteriores' },
+            { name: 'Levantamento Terra', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Posteriores' },
             { name: 'Panturrilha em Pé', sets: 5, reps: '15-20', rest: 60, targetMuscle: 'Panturrilhas' },
-			{ name: 'Desenvolvimento Militar', sets: 3, reps: '8-12', rest: 90, targetMuscle: 'Ombros' },
-			{ name: 'Elevação Lateral com Halteres', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Ombros' },
-			{ name: 'Elevação Frontal com Halteres', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Ombros' },
-			{ name: 'Encolhimento com Halteres', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Trapézio' },
+            { name: 'Desenvolvimento Militar', sets: 3, reps: '8-12', rest: 90, targetMuscle: 'Ombros' },
+            { name: 'Elevação Lateral com Halteres', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Ombros' },
+            { name: 'Elevação Frontal com Halteres', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Ombros' },
+            { name: 'Encolhimento com Halteres', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Trapézio' },
         ]
     };
 
@@ -471,7 +473,7 @@
         UpperA: "Superiores A", LowerA: "Inferiores A", UpperB: "Superiores B", LowerB: "Inferiores B"
     };
 
-    // Objeto de mapeamento para cores de músculos para variáveis CSS (seguro)
+    // Objeto de mapeamento para cores de músculos para variáveis CSS
     const MUSCLE_CSS_VAR_MAP = {
         'Peito': '--muscle-chest', 'Ombros': '--muscle-shoulders', 'Costas': '--muscle-back',
         'Bíceps': '--muscle-biceps', 'Tríceps': '--muscle-triceps', 'Pernas': '--muscle-legs',
@@ -484,7 +486,7 @@
         'Pernas': 'lower', 'Posteriores': 'lower', 'Glúteos': 'lower', 'Panturrilhas': 'lower', 'Adutores': 'lower'
     };
 
-    // NOVO: Tabela de RIR para Porcentagem da 1RM (Base Científica)
+    // Tabela de RIR para Porcentagem da 1RM (Base Científica)
     const rirToPercentage = {
         1: {0: 1.00, 1: 0.95, 2: 0.92, 3: 0.89, 4: 0.87, 5: 0.85},
         2: {0: 0.97, 1: 0.93, 2: 0.90, 3: 0.88, 4: 0.86, 5: 0.84},
@@ -508,11 +510,11 @@
     let recordsUpperChart; 
     let recordsLowerChart; 
     let progressorsChart; 
-    let weeklyVolumeChart; // NOVO: Gráfico de Volume Semanal
-    let progressionChart; // NOVO: Gráfico de Progressão
+    let weeklyVolumeChart;
+    let progressionChart;
     let currentEvolutionMode = 'exercise';
-    let currentEvolutionView = 'individual'; // NOVO: 'individual' ou 'weekly'
-    let currentRecordsMode = 'weight'; // 'weight' ou 'e1rm'
+    let currentEvolutionView = 'individual';
+    let currentRecordsMode = 'weight';
     
     // Base Chart Options para visual moderno e tema dinâmico
     let BASE_CHART_OPTIONS = {};
@@ -608,7 +610,6 @@
         }
     }
 
-
     function getHistory() {
         const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
         return history.map(workout => ({
@@ -631,7 +632,7 @@
         return null;
     }
 
-    // NOVO: Função para calcular 1RM Estimado (Epley Formula)
+    // Função para calcular 1RM Estimado (Epley Formula)
     function calculateE1RM(weight, reps) {
         if (weight <= 0 || reps <= 0) return 0;
         const e1rm = weight * (1 + reps / 30);
@@ -684,7 +685,7 @@
         return maxE1RM;
     }
     
-    // NOVO: Função para calcular a Carga Prevista (Prescribed Load)
+    // Função para calcular a Carga Prevista (Prescribed Load)
     function getPrescribedLoad(exerciseName) {
         const maxE1RM = getMaxE1RM(exerciseName);
         if (maxE1RM === 0) return null;
@@ -730,7 +731,7 @@
         return prescribedLoad.toFixed(1); 
     }
     
-    // ATUALIZADO: Função para obter TODOS os recordes pessoais (PRs) com tipo de músculo e E1RM
+    // Função para obter TODOS os recordes pessoais (PRs) com tipo de músculo e E1RM
     function getAllPersonalRecords() {
         const history = getHistory();
         const prs = {}; 
@@ -782,7 +783,7 @@
             .sort((a, b) => b.e1rm - a.e1rm); 
     }
     
-    // NOVO: Função para calcular o aumento de E1RM nos últimos 60 dias
+    // Função para calcular o aumento de E1RM nos últimos 60 dias
     function getE1RMTrends() {
         const history = getHistory();
         const trends = {}; 
@@ -847,7 +848,7 @@
             .sort((a, b) => b.increase - a.increase); 
     }
     
-    // NOVO: Função para renderizar o gráfico de Maiores Progressos
+    // Função para renderizar o gráfico de Maiores Progressos
     function renderProgressorsChart() {
         const progressors = getE1RMTrends();
         const chartCanvas = document.getElementById('progressorsChart');
@@ -929,7 +930,7 @@
         });
     }
 
-    // ATUALIZADO: Função para renderizar a lista de PRs
+    // Função para renderizar a lista de PRs
     function renderPRs() {
         const prManager = document.getElementById('pr-manager');
         const prs = getAllPersonalRecords();
@@ -979,7 +980,7 @@
         renderRecordsChart('lower');
     }
 
-    // ATUALIZADO: Função para renderizar o gráfico de Recordes Pessoais por tipo
+    // Função para renderizar o gráfico de Recordes Pessoais por tipo
     function renderRecordsChart(type) {
         const allPrs = getAllPersonalRecords();
         const filteredPrs = allPrs.filter(pr => pr.type === type)
@@ -1092,7 +1093,6 @@
         }
     }
 
-
     function getSuggestedWeight(exerciseName) {
         const prescribedLoad = getPrescribedLoad(exerciseName);
         if (prescribedLoad !== null) {
@@ -1108,7 +1108,7 @@
         return `Sug: ${suggestedWeight}kg`; 
     }
 
-    // ATUALIZADO: FUNÇÃO DE CRIAÇÃO DE EXERCÍCIO
+    // FUNÇÃO DE CRIAÇÃO DE EXERCÍCIO
     function createExerciseHTML(exercise) {
         const pr = getPersonalRecord(exercise.name);
         const lastRpe = getLastWorkoutRpe(exercise.name);
@@ -1135,7 +1135,7 @@
             intensityBar = `<span class="intensity-bar ${barClass}">Último RPE: ${lastRpe} (RIR: ${rir})</span>`;
         }
 
-        // NOVO: Adicionar recomendações de progressão
+        // Adicionar recomendações de progressão
         const progressionRecommendation = getProgressionRecommendation(exercise.name);
         const progressionHTML = progressionRecommendation 
             ? `<div class="progression-recommendation">💡 ${progressionRecommendation}</div>` 
@@ -1190,7 +1190,7 @@
         `;
     }
     
-    // NOVO: Função para obter recomendações de progressão
+    // Função para obter recomendações de progressão
     function getProgressionRecommendation(exerciseName) {
         const history = getHistory();
         const exerciseHistory = history
@@ -1230,7 +1230,7 @@
         return null;
     }
     
-    // NOVO: Função para analisar progressão geral
+    // Função para analisar progressão geral
     function analyzeProgression() {
         const history = getHistory();
         if (history.length < 4) return null;
@@ -1286,7 +1286,7 @@
         return analysis;
     }
     
-    // NOVO: Função para mostrar análise de progressão
+    // Função para mostrar análise de progressão
     function showProgressionAnalysis() {
         const analysis = analyzeProgression();
         const modal = document.getElementById('progressionModal');
@@ -1343,7 +1343,7 @@
         modal.classList.add('show');
     }
     
-    // NOVO: Função para fechar modal de progressão
+    // Função para fechar modal de progressão
     function closeProgressionModal() {
         document.getElementById('progressionModal').classList.remove('show');
     }
@@ -1511,7 +1511,7 @@
         });
     }
 
-    // NOVO: Função para obter a Semana do Ano
+    // Função para obter a Semana do Ano
     function getWeekNumber(d) {
         d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
         d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -1520,10 +1520,10 @@
         return `${d.getUTCFullYear()}-W${weekNo}`;
     }
 
-    // NOVO: Função para obter os dados de volume semanal
+    // Função para obter os dados de volume semanal
     function getWeeklyVolumeData() {
         const history = getHistory();
-        const selPeriod = document.getElementById('periodSelector').value;
+        const selPeriod = document.getElementById('periodSelectorWeekly').value;
         const allMuscleGroups = [...new Set(Object.values(workouts).flat().map(ex => ex.targetMuscle))].filter(m => m);
         
         const cutoff = new Date();
@@ -1579,7 +1579,7 @@
         return { labels, datasets };
     }
     
-    // NOVO: Função para renderizar o gráfico de Volume Semanal
+    // Função para renderizar o gráfico de Volume Semanal
     function renderWeeklyVolumeChart() {
         const { labels, datasets } = getWeeklyVolumeData();
         const chartCanvas = document.getElementById('weeklyVolumeChart');
@@ -1745,7 +1745,6 @@
         return { labels, volData, weightData, selValue };
     }
 
-
     function renderEvolutionChart() {
         if (currentEvolutionView === 'weekly') return; // Nao renderiza se estiver no modo semanal
         
@@ -1910,7 +1909,7 @@
         updateEvolutionModeButtons(currentEvolutionMode);
     }
     
-    // ATUALIZADO: Funções de renderização de treinos e modal (Adiciona novo gráfico de volume semanal)
+    // Funções de renderização de treinos e modal
     function renderWorkouts() {
         const history = getHistory();
         for (const workoutId in workouts) {
@@ -1927,7 +1926,7 @@
             let html = `${variationNoticeHTML}<div class="workout-header"><h2>${WORKOUT_NAMES[workoutId] || workoutId}</h2><p class="workout-meta">⏱️ Tempo Estimado: ~${time} minutos</p><button class="secondary-button" onclick="fillFromLastWorkout('${workoutId}')">Preencher com Último Treino</button></div>`;
             workouts[workoutId].forEach(ex => { html += createExerciseHTML(ex); });
 
-			html += `<div class="notes-section"><label for="notes-${workoutId}"><h3>Notas do Treino</h3></label><textarea id="notes-${workoutId}" placeholder="Como se sentiu hoje? Alguma dor? O treino rendeu?"></textarea></div>`;
+            html += `<div class="notes-section"><label for="notes-${workoutId}"><h3>Notas do Treino</h3></label><textarea id="notes-${workoutId}" placeholder="Como se sentiu hoje? Alguma dor? O treino rendeu?"></textarea></div>`;
             html += `<button class="finish-button" onclick="saveWorkout('${workoutId}')">Finalizar e Salvar Treino</button>`;
             container.innerHTML = html;
         }
@@ -2326,7 +2325,7 @@
         }
     }
 
-    // NOVO: Função para verificar e mostrar recomendações de progressão
+    // Função para verificar e mostrar recomendações de progressão
     function checkForProgressionRecommendations() {
         const analysis = analyzeProgression();
         if (!analysis) return;
@@ -2343,7 +2342,7 @@
         }
     }
 
-    // NOVO: SISTEMA DE ALERTA INTELIGENTE
+    // SISTEMA DE ALERTA INTELIGENTE
     function analyzeSmartAlerts() {
         const history = getHistory();
         if (history.length < 5) return [];
@@ -2451,7 +2450,7 @@
         return alerts;
     }
     
-    // NOVO: Função para mostrar alertas inteligentes
+    // Função para mostrar alertas inteligentes
     function showSmartAlerts() {
         const alerts = analyzeSmartAlerts();
         const modal = document.getElementById('smartAlertsModal');
@@ -2505,12 +2504,12 @@
         modal.classList.add('show');
     }
     
-    // NOVO: Função para fechar modal de alertas
+    // Função para fechar modal de alertas
     function closeSmartAlertsModal() {
         document.getElementById('smartAlertsModal').classList.remove('show');
     }
     
-    // NOVO: Função para verificar e exibir alertas automaticamente
+    // Função para verificar e exibir alertas automaticamente
     function checkAndShowSmartAlerts() {
         const alerts = analyzeSmartAlerts();
         const highPriorityAlerts = alerts.filter(alert => alert.priority === 'high');
@@ -2534,7 +2533,6 @@
             });
         }
     }
-
 
     const themeSwitcher = document.getElementById('theme-switcher');
     const doc = document.documentElement;
@@ -2667,19 +2665,17 @@
         renderConsistencyCalendar(newDate);
     }
 
-
+    // Inicialização da aplicação
     document.addEventListener('DOMContentLoaded', () => {
         const savedTheme = localStorage.getItem('theme') || 'dark';
         applyTheme(savedTheme);
-		createFocusOverlay();
+        createFocusOverlay();
         renderWorkouts();
-		checkForDeloadSuggestion();
-        checkForProgressionRecommendations(); // NOVO: Verificar recomendações de progressão
-        checkAndShowSmartAlerts(); // NOVO: Verificar e exibir alertas automaticamente
+        checkForDeloadSuggestion();
+        checkForProgressionRecommendations();
+        checkAndShowSmartAlerts();
         showWorkout('UpperA');
     });
-
 </script>
-
 </body>
 </html>
