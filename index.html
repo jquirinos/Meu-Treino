@@ -443,9 +443,9 @@
             { name: 'Agachamento Livre', sets: 4, reps: '8-12', rest: 120, targetMuscle: 'Pernas' },
             { name: 'Leg Press 45º', sets: 4, reps: '8-12', rest: 120, targetMuscle: 'Pernas' },
             { name: 'Cadeira Extensora', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Pernas' },
-            { name: 'Afundo no Smith', sets: 4, reps: '10-12', rest: 90, targetMuscle: 'Pernas' },
-            { name: 'Aguachamento Hack', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Pernas' },
-            { name: 'Panturrilha em Sentado', sets: 5, reps: '15-20', rest: 60, targetMuscle: 'Panturrilhas' },
+            { name: 'Afundo no Smith', sets: 3, reps: '10-12', rest: 90, targetMuscle: 'Pernas' },
+            { name: 'Agachamento Hack', sets: 4, reps: '10-12', rest: 60, targetMuscle: 'Pernas' },
+            { name: 'Panturrilha Sentado', sets: 5, reps: '15-20', rest: 60, targetMuscle: 'Panturrilhas' },
         ],
         UpperB: [
             { name: 'Barra Fixa (ou Puxada Frontal)', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Costas' },
@@ -2267,10 +2267,15 @@
     }
     
     function exportHistory() {
-        const history = localStorage.getItem('workoutHistory');
-        if (!history) { showToast("Nenhum dado de histórico para exportar.", 'warning'); return; }
+    const history = localStorage.getItem('workoutHistory');
+    if (!history) { showToast("Nenhum dado de histórico para exportar.", 'warning'); return; }
 
-        const blob = new Blob([history], { type: 'application/json' });
+    try {
+        // Parse o JSON e formata com indentação
+        const parsedHistory = JSON.parse(history);
+        const formattedHistory = JSON.stringify(parsedHistory, null, 2); // 2 espaços de indentação
+        
+        const blob = new Blob([formattedHistory], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -2280,7 +2285,11 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         showToast('Histórico exportado com sucesso!', 'success');
+    } catch (error) {
+        showToast('Erro ao formatar dados para exportação.', 'error');
+        console.error('Export error:', error);
     }
+}
     
     document.getElementById('import-file-input').addEventListener('change', function(event) {
         const file = event.target.files[0];
