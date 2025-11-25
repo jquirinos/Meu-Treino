@@ -53,9 +53,28 @@
         }
         .container { max-width: 800px; margin: 0 auto; padding: 0 1rem; }
         .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--accent-color); }
+        .header-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
         h1 { text-align: left; color: var(--accent-color); border-bottom: none; margin: 0; padding-bottom: 0.5rem; font-size: 1.8rem; }
         h2, h3 { text-align: center; color: var(--accent-color); }
         .theme-switcher { font-size: 1.5rem; cursor: pointer; background: none; border: none; color: var(--text-color); padding: 0.5rem; }
+        .editor-button {
+            font-size: 1.5rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .editor-button:hover {
+            background-color: var(--input-bg);
+            transform: scale(1.1);
+        }
         .main-controls, .workout-selector { display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
         .tab-button, .main-button, .secondary-button {
             padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: bold; cursor: pointer;
@@ -357,7 +376,49 @@
             color: var(--primary-color);
         }
 
-        /* --- Melhoria de Responsividade (Mobile) --- */
+        /* --- ESTILOS DO EDITOR DE TREINOS --- */
+        .editor-container { padding: 1rem; }
+        .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
+        .editor-select { padding: 0.5rem; background: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 5px; font-size: 1rem; flex-grow: 1; }
+        
+        .editor-list { list-style: none; padding: 0; margin: 0; border: 1px solid var(--border-color); border-radius: 8px; max-height: 400px; overflow-y: auto; }
+        .editor-item { 
+            display: flex; justify-content: space-between; align-items: center; padding: 10px; 
+            border-bottom: 1px solid var(--border-color); background: var(--secondary-color);
+            transition: background 0.2s;
+        }
+        .editor-item:last-child { border-bottom: none; }
+        .editor-item:hover { background-color: rgba(255,255,255,0.05); }
+        
+        .editor-item-info { flex-grow: 1; display: flex; flex-direction: column; gap: 2px; }
+        .editor-item-title { font-weight: bold; font-size: 1rem; color: var(--text-color); }
+        .editor-item-details { font-size: 0.8rem; color: #888; }
+        
+        .editor-controls { display: flex; gap: 5px; }
+        .editor-btn { 
+            padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-move { background-color: var(--info-color); color: white; }
+        .btn-delete { background-color: var(--danger-color); color: white; }
+        .btn-add { background-color: var(--success-color); color: white; width: 100%; padding: 10px; margin-top: 10px; font-weight: bold; }
+        .btn-reset { background-color: var(--warning-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 5px; border: none; font-weight: bold; cursor: pointer;}
+
+        /* Formulário de Adição */
+        .editor-form { 
+            margin-top: 1.5rem; padding: 1rem; background-color: rgba(0,0,0,0.2); 
+            border-radius: 8px; border: 1px solid var(--border-color); 
+        }
+        .form-grid { 
+            display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 10px; 
+        }
+        .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        
+        .editor-input { 
+            width: 100%; padding: 8px; background: var(--input-bg); color: var(--text-color); 
+            border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box;
+        }
+        
         @media (max-width: 600px) {
             body { padding: 0; }
             .container { padding: 0.5rem; }
@@ -391,6 +452,11 @@
             /* Ajuste o seletor de modo na aba de evolução */
             #evolutionModeSelector { flex-direction: row; }
             .evolution-mode-button:first-child, .evolution-mode-button:last-child { border-radius: 8px; margin: 5px 0; }
+
+             /* Responsividade do Editor */
+            .form-grid, .form-grid-2 { grid-template-columns: 1fr; }
+            .editor-controls { flex-direction: column; }
+            .editor-btn { width: 100%; }
         }
     </style>
 </head>
@@ -401,7 +467,10 @@
         <div id="smart-alert-container"></div>
         <div class="header-container">
             <h1>Plano de Treino</h1>
-            <button class="theme-switcher" id="theme-switcher">🌙</button>
+            <div class="header-controls">
+                <button class="theme-switcher" id="theme-switcher">🌙</button>
+                <button class="editor-button" onclick="openEditorModal()" title="Editar Treinos">⚙️</button>
+            </div>
         </div>
         <div class="main-controls" style="margin-top: 2rem;">
             <button class="main-button" onclick="openChartModal()">Ver Evolução</button>
@@ -425,11 +494,63 @@
     <div id="chartModal" class="modal"></div>
     <div id="progressionModal" class="modal"></div>
     <div id="smartAlertsModal" class="modal"></div>
+    
+    <div id="editorModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeEditorModal()">&times;</span>
+            <h2 style="text-align:center; color: var(--warning-color);">Editor de Rotina</h2>
+            
+            <div class="editor-container">
+                <div class="editor-header">
+                    <label for="editorWorkoutSelect">Selecionar Treino:</label>
+                    <select id="editorWorkoutSelect" class="editor-select" onchange="renderEditorList()">
+                        <option value="UpperA">Superiores A</option>
+                        <option value="LowerA">Inferiores A</option>
+                        <option value="UpperB">Superiores B</option>
+                        <option value="LowerB">Inferiores B</option>
+                    </select>
+                    <button class="btn-reset" onclick="resetToDefaultWorkouts()">Restaurar Padrão</button>
+                </div>
+
+                <ul id="editorList" class="editor-list">
+                    </ul>
+
+                <div class="editor-form">
+                    <h4 style="margin-top:0; margin-bottom:10px; color: var(--accent-color);">Adicionar Novo Exercício</h4>
+                    <div class="form-grid">
+                        <input type="text" id="newExName" class="editor-input" placeholder="Nome do Exercício">
+                        <input type="text" id="newExSets" class="editor-input" placeholder="Séries (ex: 4)">
+                        <input type="text" id="newExReps" class="editor-input" placeholder="Reps (ex: 8-12)">
+                    </div>
+                    <div class="form-grid-2">
+                        <input type="number" id="newExRest" class="editor-input" placeholder="Descanso (seg)">
+                        <select id="newExMuscle" class="editor-input">
+                            <option value="">Grupo Muscular...</option>
+                            <option value="Peito">Peito</option>
+                            <option value="Costas">Costas</option>
+                            <option value="Ombros">Ombros</option>
+                            <option value="Bíceps">Bíceps</option>
+                            <option value="Tríceps">Tríceps</option>
+                            <option value="Pernas">Pernas (Quadríceps)</option>
+                            <option value="Posteriores">Posteriores</option>
+                            <option value="Glúteos">Glúteos</option>
+                            <option value="Panturrilhas">Panturrilhas</option>
+                            <option value="Trapézio">Trapézio</option>
+                            <option value="Adutores">Adutores</option>
+                            <option value="Abdominais">Abdominais</option>
+                        </select>
+                    </div>
+                    <button class="editor-btn btn-add" onclick="addExerciseToEditor()">+ Adicionar Exercício</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <input type="file" id="import-file-input" accept=".json" style="display: none;">
 
 <script>
-    // Constantes e configurações
-    const workouts = {
+    // 1. Definição Padrão (Backup)
+    const DEFAULT_WORKOUTS = {
         UpperA: [
             { name: 'Supino Inclinado com Halteres', sets: 4, reps: '8-12', rest: 60, targetMuscle: 'Peito' },
             { name: 'Supino Reto com Barra', sets: 4, reps: '8-12', rest: 90, targetMuscle: 'Peito' },
@@ -468,6 +589,9 @@
         ]
     };
 
+    // 2. Carregar Treinos (LocalStorage ou Padrão)
+    let workouts = JSON.parse(localStorage.getItem('customWorkouts')) || JSON.parse(JSON.stringify(DEFAULT_WORKOUTS));
+
     const VARIATION_THRESHOLD = 12; 
     const WORKOUT_NAMES = {
         UpperA: "Superiores A", LowerA: "Inferiores A", UpperB: "Superiores B", LowerB: "Inferiores B"
@@ -483,7 +607,7 @@
     // Mapeamento de grupos musculares para tipo de treino
     const MUSCLE_TO_TYPE = {
         'Peito': 'upper', 'Ombros': 'upper', 'Costas': 'upper', 'Bíceps': 'upper', 'Tríceps': 'upper',
-        'Pernas': 'lower', 'Posteriores': 'lower', 'Glúteos': 'lower', 'Panturrilhas': 'lower', 'Adutores': 'lower'
+        'Pernas': 'lower', 'Posteriores': 'lower', 'Glúteos': 'lower', 'Panturrilhas': 'lower', 'Adutores': 'lower', 'Trapézio': 'upper', 'Abdominais': 'lower'
     };
 
     // Tabela de RIR para Porcentagem da 1RM (Base Científica)
@@ -2571,12 +2695,6 @@
         applyTheme(newTheme);
     });
 
-    window.onclick = function(event) { 
-        if (event.target == chartModal) closeChartModal();
-        if (event.target == document.getElementById('progressionModal')) closeProgressionModal();
-        if (event.target == document.getElementById('smartAlertsModal')) closeSmartAlertsModal();
-    }
-    
     let currentCalendarDate = new Date();
     
     function getConsistencyData() {
@@ -2672,6 +2790,124 @@
         const newDate = new Date(currentCalendarDate.getTime());
         newDate.setMonth(newDate.getMonth() + offset);
         renderConsistencyCalendar(newDate);
+    }
+    
+    // --- LÓGICA DO EDITOR DE TREINOS (NOVO) ---
+
+    function openEditorModal() {
+        document.getElementById('editorModal').classList.add('show');
+        renderEditorList();
+    }
+
+    function closeEditorModal() {
+        document.getElementById('editorModal').classList.remove('show');
+        // Recarrega a aplicação para refletir mudanças
+        renderWorkouts();
+        // Se estivermos na aba ativa, recarrega ela
+        const activeTab = document.querySelector('.tab-button.active');
+        if(activeTab) {
+            const workoutId = activeTab.getAttribute('onclick').match(/'([^']+)'/)[1];
+            showWorkout(workoutId);
+        }
+    }
+
+    function saveWorkoutsToStorage() {
+        localStorage.setItem('customWorkouts', JSON.stringify(workouts));
+        showToast('Alterações salvas!', 'success');
+        renderEditorList(); // Re-renderiza a lista para atualizar índices se necessário
+    }
+
+    function resetToDefaultWorkouts() {
+        if(confirm("Tem certeza? Isso apagará todas as suas personalizações na rotina.")) {
+            workouts = JSON.parse(JSON.stringify(DEFAULT_WORKOUTS));
+            saveWorkoutsToStorage();
+        }
+    }
+
+    function renderEditorList() {
+        const workoutId = document.getElementById('editorWorkoutSelect').value;
+        const list = document.getElementById('editorList');
+        const exercises = workouts[workoutId];
+        
+        list.innerHTML = '';
+
+        if(exercises.length === 0) {
+            list.innerHTML = '<li style="padding:10px; text-align:center; color:#888;">Nenhum exercício neste treino.</li>';
+        }
+
+        exercises.forEach((ex, index) => {
+            const li = document.createElement('li');
+            li.className = 'editor-item';
+            li.innerHTML = `
+                <div class="editor-item-info">
+                    <span class="editor-item-title">${ex.name}</span>
+                    <span class="editor-item-details">${ex.sets} x ${ex.reps} | ${ex.rest}s | ${ex.targetMuscle}</span>
+                </div>
+                <div class="editor-controls">
+                    <button class="editor-btn btn-move" onclick="moveExercise('${workoutId}', ${index}, -1)" title="Subir">⬆️</button>
+                    <button class="editor-btn btn-move" onclick="moveExercise('${workoutId}', ${index}, 1)" title="Descer">⬇️</button>
+                    <button class="editor-btn btn-delete" onclick="deleteExercise('${workoutId}', ${index})" title="Remover">🗑️</button>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    function addExerciseToEditor() {
+        const workoutId = document.getElementById('editorWorkoutSelect').value;
+        const name = document.getElementById('newExName').value.trim();
+        const sets = parseInt(document.getElementById('newExSets').value);
+        const reps = document.getElementById('newExReps').value.trim();
+        const rest = parseInt(document.getElementById('newExRest').value);
+        const muscle = document.getElementById('newExMuscle').value;
+
+        if (!name || !sets || !reps || !rest || !muscle) {
+            showToast('Preencha todos os campos!', 'warning');
+            return;
+        }
+
+        workouts[workoutId].push({
+            name: name,
+            sets: sets,
+            reps: reps,
+            rest: rest,
+            targetMuscle: muscle
+        });
+
+        // Limpar campos
+        document.getElementById('newExName').value = '';
+        document.getElementById('newExSets').value = '';
+        document.getElementById('newExReps').value = '';
+        document.getElementById('newExRest').value = '';
+        document.getElementById('newExMuscle').value = '';
+
+        saveWorkoutsToStorage();
+    }
+
+    function deleteExercise(workoutId, index) {
+        if(confirm('Remover este exercício?')) {
+            workouts[workoutId].splice(index, 1);
+            saveWorkoutsToStorage();
+        }
+    }
+
+    function moveExercise(workoutId, index, direction) {
+        const exercises = workouts[workoutId];
+        const newIndex = index + direction;
+
+        if (newIndex >= 0 && newIndex < exercises.length) {
+            // Swap
+            [exercises[index], exercises[newIndex]] = [exercises[newIndex], exercises[index]];
+            saveWorkoutsToStorage();
+        }
+    }
+
+    // Adicionar handler de fechamento ao modal do editor
+    window.onclick = function(event) { 
+        if (event.target == document.getElementById('chartModal')) closeChartModal();
+        if (event.target == document.getElementById('progressionModal')) closeProgressionModal();
+        if (event.target == document.getElementById('smartAlertsModal')) closeSmartAlertsModal();
+        if (event.target == document.getElementById('editorModal')) closeEditorModal(); // Handler para o novo modal
     }
 
     // Inicialização da aplicação
